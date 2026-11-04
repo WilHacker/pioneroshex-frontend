@@ -11,8 +11,9 @@ El servidor autoritativo vive en el repositorio `pioneroshex-backend`.
 ## Puesta en marcha
 
 ```bash
-pnpm install     # instala dependencias y activa los hooks de git
-pnpm dev         # http://localhost:3000
+cp .env.example .env.local   # URL del backend (NEXT_PUBLIC_API_URL)
+pnpm install                 # instala dependencias y activa los hooks de git
+pnpm dev                     # http://localhost:3000 (el backend debe estar en el puerto 3001)
 ```
 
 ## Comandos
@@ -40,6 +41,8 @@ Solo hay dos ramas permanentes y no se usan ramas de feature:
 - **commit-msg:** commitlint. Formato `tipo: descripción`, con tipo en
   `feat, fix, refactor, docs, test, chore, perf, ci` y la descripción en español.
 - **pre-push:** `typecheck` y tests.
+- **CI (GitHub Actions):** lint, formato, tipos, tests con cobertura, build, auditoría de
+  dependencias de producción, detección de secretos y commitlint en los PR.
 - Cobertura mínima del 80 % sobre la lógica pura (`src/config` y `src/lib`).
 
 ## Convenciones
