@@ -8,6 +8,11 @@
 - [ ] Tests nuevos o actualizados para el cambio
 - [ ] Probado a mano en el navegador (si aplica)
 
+## Arquitectura
+
+- [ ] Respeta las capas y el lint de capas pasa
+- [ ] Ninguna feature importa de otra con rutas relativas; el cliente no decide nada del juego
+
 ## Accesibilidad y seguridad
 
 - [ ] Los elementos interactivos se pueden usar con teclado y tienen nombre accesible

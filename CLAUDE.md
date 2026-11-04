@@ -42,6 +42,39 @@ src/features/    tablero, mano, comercio... (aún no existe)
 - `output: 'standalone'` (en `next.config.ts`) genera el servidor mínimo que usa la imagen de
   Docker. No quitarlo sin actualizar el `Dockerfile`.
 
+## Arquitectura decidida (2026-11-04)
+
+**Capas por funcionalidad** con **cliente ligero**: el navegador dibuja el estado que manda el
+servidor y no decide nada del juego.
+
+```
+app/  ─▶  features/  ─▶  components/  ─▶  lib/  ─▶  config/
+```
+
+Una capa solo importa de las que están a su derecha.
+
+**Las hace cumplir el lint** (`no-restricted-imports` en `oxlint.json`, probado con archivos buenos
+y malos):
+
+- `config/` no importa React, Next ni ninguna otra capa.
+- `lib/` no importa React, Next, `components/`, `features/` ni `app/`: es lógica pura.
+- `components/` no importa `features/` ni `app/`.
+- `features/` no importa `app/`, ni otra feature con el alias `@/features/...`.
+
+**Solo por revisión** (el lint no las detecta): entre features no se importa con rutas relativas
+(`../otra/...`); `app/` solo rutea y compone; los componentes nunca abren sockets.
+
+Estado del cliente (se instala cuando haga falta, no antes):
+
+- **Store espejo** (Zustand): refleja el estado o los parches que manda el servidor; la UI es
+  función del store.
+- **Máquina de estados de interfaz** (XState) sobre el store: conectando, reconectando, mi turno,
+  esperando, descarte, comercio. Evita acciones ilegales en la pantalla.
+- `socket.io-client` vive en `lib/`.
+- **Alternativa abierta:** cola de eventos + reductor compartido (animaciones fieles de dados y
+  cartas). Exige compartir `core` entre repos (paquete privado) y un backend con registro de
+  eventos. No se decide hasta que exista `core/` en el backend.
+
 ## Convenciones
 
 - Términos técnicos y estructurales en inglés (`config`, `lib`, `components`, `features`).

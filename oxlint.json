@@ -20,5 +20,99 @@
     "browser": true,
     "node": true
   },
-  "ignorePatterns": [".next", "coverage", "node_modules"]
+  "ignorePatterns": [".next", "coverage", "node_modules"],
+  "overrides": [
+    {
+      "files": ["src/config/**/*.{ts,tsx}"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["react", "react/*", "react-dom", "react-dom/*", "next", "next/*"],
+                "message": "config/ no usa React ni Next."
+              },
+              {
+                "group": [
+                  "@/lib/**",
+                  "@/components/**",
+                  "@/features/**",
+                  "@/app/**",
+                  "**/lib/**",
+                  "**/components/**",
+                  "**/features/**",
+                  "**/app/**"
+                ],
+                "message": "config/ es la capa más baja: no importa de otras capas."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["src/lib/**/*.{ts,tsx}"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["react", "react/*", "react-dom", "react-dom/*", "next", "next/*"],
+                "message": "lib/ es lógica pura: sin React ni Next."
+              },
+              {
+                "group": [
+                  "@/components/**",
+                  "@/features/**",
+                  "@/app/**",
+                  "**/components/**",
+                  "**/features/**",
+                  "**/app/**"
+                ],
+                "message": "lib/ no puede importar de components/, features/ ni app/."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["src/components/**/*.{ts,tsx}"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["@/features/**", "@/app/**", "**/features/**", "**/app/**"],
+                "message": "components/ no puede importar de features/ ni app/."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["src/features/**/*.{ts,tsx}"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["@/app/**", "**/app/**"],
+                "message": "features/ no puede importar de app/."
+              },
+              {
+                "group": ["@/features/**"],
+                "message": "Una feature no importa de otra. Dentro de la propia se usan rutas relativas."
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
 }
