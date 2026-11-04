@@ -45,3 +45,6 @@ next-env.d.ts
 .vscode/
 .idea/
 Thumbs.db
+
+# Playwright MCP (capturas y logs de las pruebas en el navegador)
+.playwright-mcp/

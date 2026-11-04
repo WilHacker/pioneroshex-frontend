@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pnpm lint)",
+      "Bash(pnpm format:check)",
+      "Bash(pnpm typecheck)",
+      "Bash(pnpm test)",
+      "Bash(pnpm test:cov)",
+      "Bash(pnpm build)",
+      "Bash(git status *)",
+      "Bash(git diff *)",
+      "Bash(git log *)"
+    ],
+    "deny": ["Read(./.env)", "Read(./.env.local)", "Edit(./.env)", "Edit(./.env.local)"]
+  },
+  "enabledPlugins": {
+    "postman@claude-plugins-official": false
+  }
+}
