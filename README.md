@@ -27,6 +27,17 @@ pnpm dev                     # http://localhost:3000 (el backend debe estar en e
 | `pnpm typecheck`               | Genera los tipos de Next y corre `tsc`     |
 | `pnpm test` / `test:cov`       | Tests unitarios / con cobertura            |
 
+## Docker
+
+La imagen usa el servidor mínimo de Next (`output: 'standalone'`) y corre sin root. La URL del
+backend se incrusta en el JavaScript durante el build, por eso se pasa como argumento de build y
+la imagen queda atada a ella:
+
+```bash
+docker build --build-arg NEXT_PUBLIC_API_URL=http://localhost:3001 -t pioneroshex-frontend .
+docker run -p 3000:3000 pioneroshex-frontend
+```
+
 ## Ramas
 
 Solo hay dos ramas permanentes y no se usan ramas de feature:
@@ -42,7 +53,7 @@ Solo hay dos ramas permanentes y no se usan ramas de feature:
   `feat, fix, refactor, docs, test, chore, perf, ci` y la descripción en español.
 - **pre-push:** `typecheck` y tests.
 - **CI (GitHub Actions):** lint, formato, tipos, tests con cobertura, build, auditoría de
-  dependencias de producción, detección de secretos y commitlint en los PR.
+  dependencias de producción, detección de secretos, build de la imagen Docker y commitlint en los PR.
 - Cobertura mínima del 80 % sobre la lógica pura (`src/config` y `src/lib`).
 
 ## Convenciones

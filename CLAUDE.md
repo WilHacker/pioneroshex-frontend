@@ -39,6 +39,8 @@ src/features/    tablero, mano, comercio... (aún no existe)
 - **Datos externos** (respuestas del backend, parámetros de URL) se validan con Zod.
 - `cacheComponents` y `partialPrefetching` están **desactivados a propósito** (no aportan a un
   juego en tiempo real). No se usa `next/font`: el build no debe depender de descargar fuentes.
+- `output: 'standalone'` (en `next.config.ts`) genera el servidor mínimo que usa la imagen de
+  Docker. No quitarlo sin actualizar el `Dockerfile`.
 
 ## Convenciones
 
@@ -63,6 +65,11 @@ src/features/    tablero, mano, comercio... (aún no existe)
   nunca `--all`. `sharp` está en `false` a propósito (no se usa `next/image` todavía).
 - **Next lee `NEXT_PUBLIC_*` solo una por una** (`process.env.NEXT_PUBLIC_X`); pasar `process.env`
   entero a Zod no funciona en el navegador. Sin `NEXT_PUBLIC_API_URL` el build falla a propósito.
+- **Docker:** `NEXT_PUBLIC_API_URL` se incrusta en el JavaScript durante el build, así que la imagen
+  queda atada a esa URL. Se pasa con `--build-arg` y no tiene valor por defecto (si falta, el build
+  falla a propósito). Sin corepack: la versión de pnpm está en `ARG PNPM_VERSION` y en
+  `package.json`, mantenerlas iguales. `public/` tiene un `.gitkeep` porque el Dockerfile la copia
+  y git no versiona carpetas vacías.
 - `pnpm typecheck` ejecuta `next typegen` antes de `tsc`: sin eso faltan tipos como `LayoutProps`.
 - Vite 8 resuelve los alias con `resolve.tsconfigPaths` (no hace falta `vite-tsconfig-paths`).
 - Vitest y Vite se actualizan juntos (Vitest exige una versión concreta de Vite).

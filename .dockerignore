@@ -1,0 +1,11 @@
+node_modules
+.next
+coverage
+.git
+.github
+.claude
+.husky
+.playwright-mcp
+.env*
+!.env.example
+*.log

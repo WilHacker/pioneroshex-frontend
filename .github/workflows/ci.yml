@@ -80,3 +80,15 @@ jobs:
       - uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  docker:
+    name: Imagen Docker
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      # NEXT_PUBLIC_API_URL se incrusta en el build: sin ella la imagen no se construye.
+      - run: >-
+          docker build
+          --build-arg NEXT_PUBLIC_API_URL=http://localhost:3001
+          -t pioneroshex-frontend:ci .
