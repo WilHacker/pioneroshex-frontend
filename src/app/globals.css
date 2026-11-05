@@ -87,6 +87,38 @@ body {
   }
 }
 
+/* El dado rueda hasta mostrar su cara: la orientación final llega por variables CSS. */
+@keyframes dado-gira {
+  from {
+    transform: rotateX(calc(var(--fx) - 540deg * var(--giro, 1)))
+      rotateY(calc(var(--fy) + 720deg * var(--giro, 1)));
+  }
+  to {
+    transform: rotateX(var(--fx)) rotateY(var(--fy));
+  }
+}
+
+/* La suma de los dados aparece cuando el dado ya casi se detuvo. */
+@keyframes aparece {
+  from {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.dado3d-cubo {
+  transform: rotateX(var(--fx)) rotateY(var(--fy));
+  animation: dado-gira 1s cubic-bezier(0.15, 0.7, 0.2, 1) both;
+}
+
+.suma-aparece {
+  animation: aparece 0.35s cubic-bezier(0.3, 1.5, 0.5, 1) 0.8s both;
+}
+
 .sitio {
   animation: respirar 1.6s ease-in-out infinite;
 }
@@ -97,7 +129,9 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   .sitio,
-  .dado-rodando {
+  .dado-rodando,
+  .dado3d-cubo,
+  .suma-aparece {
     animation: none;
   }
 }

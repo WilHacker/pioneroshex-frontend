@@ -37,6 +37,8 @@ function juego({ vista, acciones, sitios, ...resto }: Opciones = {}): Juego {
     rechazo: null,
     eventos: [],
     ultimos: { numero: 0, eventos: [] },
+    tiradas: 0,
+    resaltado: null,
     enviar,
     datos: {
       mesa: mesaDePrueba,
@@ -394,6 +396,23 @@ describe('Partida: cartas de desarrollo', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Poner camino en a1' }));
     await userEvent.click(screen.getByRole('button', { name: 'Confirmar camino en a1' }));
     expect(screen.getByRole('button', { name: 'Construir 0 caminos' })).toBeDisabled();
+  });
+});
+
+describe('Partida: dados', () => {
+  it('muestra la suma de la última tirada', () => {
+    mostrar(juego({ vista: vistaDePrueba({ dados: [3, 4] }) }));
+    expect(screen.getByText('7')).toBeInTheDocument();
+  });
+
+  it('las casillas del número que salió laten en el tablero unos segundos', () => {
+    mostrar(juego({ resaltado: 8 }));
+    expect(screen.getByText('Produce con el 8')).toBeInTheDocument();
+  });
+
+  it('pasado ese tiempo, o si salió un número sin casillas, no se resalta nada', () => {
+    mostrar(juego({ resaltado: null }));
+    expect(screen.queryByText(/Produce con el/)).not.toBeInTheDocument();
   });
 });
 

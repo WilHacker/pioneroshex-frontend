@@ -11,6 +11,7 @@ interface Opciones {
   sitios?: string[];
   previa?: string | null;
   aristasElegidas?: string[];
+  numeroResaltado?: number | null;
 }
 
 function dibujar(opciones: Opciones = {}) {
@@ -27,6 +28,7 @@ function dibujar(opciones: Opciones = {}) {
       sitios={opciones.sitios ?? []}
       previa={opciones.previa ?? null}
       aristasElegidas={opciones.aristasElegidas}
+      numeroResaltado={opciones.numeroResaltado}
       onVertice={alVertice}
       onArista={alArista}
       onCasilla={alCasilla}
@@ -202,5 +204,22 @@ describe('Tablero: vista previa', () => {
     expect(boton).toHaveAttribute('aria-pressed', 'true');
     await userEvent.click(boton);
     expect(alVertice).toHaveBeenCalledWith(V1);
+  });
+});
+
+describe('Tablero: número que salió', () => {
+  it('las casillas con ese número se resaltan', () => {
+    dibujar({ numeroResaltado: 8 });
+    expect(screen.getByText('Produce con el 8')).toBeInTheDocument();
+  });
+
+  it('si ninguna casilla tiene ese número (o es el desierto), no se resalta nada', () => {
+    dibujar({ numeroResaltado: 7 });
+    expect(screen.queryByText(/Produce con el/)).not.toBeInTheDocument();
+  });
+
+  it('sin número no se resalta nada', () => {
+    dibujar({ numeroResaltado: null });
+    expect(screen.queryByText(/Produce con el/)).not.toBeInTheDocument();
   });
 });

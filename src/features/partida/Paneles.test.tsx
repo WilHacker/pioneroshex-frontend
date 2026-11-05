@@ -1,6 +1,7 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Dado } from '@/components/arte/Dado';
+import { Dado3D, ORIENTACION } from '@/components/arte/Dado3D';
 import type { AccionDisponible, Carta, Trato } from '@/lib/esquemas';
 import { vistaDePrueba } from '@/lib/pruebas';
 import { Banco } from './Banco';
@@ -259,23 +260,41 @@ describe('Paleta', () => {
 
 describe('Dados', () => {
   it('muestra la última tirada cuando no me toca tirar', () => {
-    render(<Dados dados={[3, 4]} puedeTirar={false} ocupado={false} onTirar={vi.fn()} />);
+    render(
+      <Dados dados={[3, 4]} tirada={1} puedeTirar={false} ocupado={false} onTirar={vi.fn()} />,
+    );
     expect(screen.getByLabelText('Dados')).toBeInTheDocument();
     expect(screen.getByRole('img', { name: 'Dado: 3' })).toBeInTheDocument();
     expect(screen.getByRole('img', { name: 'Dado: 4' })).toBeInTheDocument();
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
   });
 
+  it('muestra la suma de la tirada en grande, y el 7 avisa del ladrón', () => {
+    const { rerender } = render(
+      <Dados dados={[3, 4]} tirada={1} puedeTirar={false} ocupado={false} onTirar={vi.fn()} />,
+    );
+    expect(screen.getByText('7')).toHaveAttribute('title', 'Siete: se mueve el ladrón');
+    rerender(
+      <Dados dados={[2, 6]} tirada={2} puedeTirar={false} ocupado={false} onTirar={vi.fn()} />,
+    );
+    expect(screen.getByText('8')).toHaveAttribute('title', 'Suma: 8');
+  });
+
+  it('sin tirada todavía no hay suma', () => {
+    render(<Dados dados={null} tirada={0} puedeTirar={false} ocupado={false} onTirar={vi.fn()} />);
+    expect(screen.queryByText(/suma de los dados/)).not.toBeInTheDocument();
+  });
+
   it('cuando me toca tirar son un botón', async () => {
     const alTirar = vi.fn();
-    render(<Dados dados={null} puedeTirar ocupado={false} onTirar={alTirar} />);
+    render(<Dados dados={null} tirada={0} puedeTirar ocupado={false} onTirar={alTirar} />);
     expect(screen.getAllByRole('img', { name: 'Dado sin tirar' })).toHaveLength(2);
     await userEvent.click(screen.getByRole('button', { name: /Tirar dados/ }));
     expect(alTirar).toHaveBeenCalled();
   });
 
   it('mientras se espera al servidor no se puede tirar de nuevo', () => {
-    render(<Dados dados={null} puedeTirar ocupado onTirar={vi.fn()} />);
+    render(<Dados dados={null} tirada={0} puedeTirar ocupado onTirar={vi.fn()} />);
     expect(screen.getByRole('button', { name: /Tirar dados/ })).toBeDisabled();
   });
 });
@@ -643,5 +662,49 @@ describe('Registro', () => {
   it('sin eventos lo dice', () => {
     dibujar([]);
     expect(screen.getByText('Aún no ha pasado nada.')).toBeInTheDocument();
+  });
+});
+
+describe('Dado3D', () => {
+  it('es una imagen con su valor, y tiene las seis caras', () => {
+    const { container } = render(<Dado3D valor={5} />);
+    expect(screen.getByRole('img', { name: 'Dado: 5' })).toBeInTheDocument();
+    expect(container.querySelectorAll('[aria-hidden="true"]')).toHaveLength(6);
+  });
+
+  it('sin valor es un dado con un interrogante', () => {
+    render(<Dado3D valor={null} />);
+    expect(screen.getByRole('img', { name: 'Dado sin tirar' })).toBeInTheDocument();
+    expect(screen.getByText('?')).toBeInTheDocument();
+  });
+
+  it('cada valor gira el cubo hasta la orientación de su cara', () => {
+    const { container } = render(<Dado3D valor={3} />);
+    const cubo = container.querySelector('.dado3d-cubo') as HTMLElement;
+    const [x, y] = ORIENTACION[3]!;
+    expect(cubo.style.getPropertyValue('--fx')).toBe(`${x}deg`);
+    expect(cubo.style.getPropertyValue('--fy')).toBe(`${y}deg`);
+  });
+
+  it('las caras opuestas suman 7', () => {
+    const opuestas = (a: number, b: number): number => a + b;
+    const [x1, y1] = ORIENTACION[1]!;
+    const [x6, y6] = ORIENTACION[6]!;
+    expect(opuestas(1, 6)).toBe(7);
+    expect(Math.abs(y6 - y1)).toBe(180);
+    expect(x1).toBe(x6);
+  });
+
+  it('cada dado rueda hacia un lado distinto', () => {
+    const { container } = render(
+      <>
+        <Dado3D valor={2} giro={1} />
+        <Dado3D valor={2} giro={-1} />
+      </>,
+    );
+    const giros = [...container.querySelectorAll<HTMLElement>('.dado3d-cubo')].map((c) =>
+      c.style.getPropertyValue('--giro'),
+    );
+    expect(giros).toEqual(['1', '-1']);
   });
 });

@@ -119,10 +119,12 @@ type Props = {
   terreno: Terreno;
   ficha: number | null;
   centro: Punto;
+  /** Acaba de salir su número: late para que se vea qué casillas producen. */
+  resaltada?: boolean;
 };
 
 /** Una casilla del tablero: el terreno con su relieve, sus dibujos y la ficha del número. */
-export function Casilla({ terreno, ficha, centro }: Props) {
+export function Casilla({ terreno, ficha, centro, resaltada = false }: Props) {
   const color = COLOR_TERRENO[terreno];
   const esquinas = esquinasDeCasilla(centro);
   const interior = esquinasDeCasilla({ x: centro.x, y: centro.y }).map((e) => ({
@@ -155,6 +157,28 @@ export function Casilla({ terreno, ficha, centro }: Props) {
           <g key={`${lugar.x},${lugar.y}`}>{MOTIVO[terreno](lugar)}</g>
         ))}
       </g>
+      {resaltada && ficha !== null && (
+        <g className="sitio">
+          <polygon
+            points={puntos(esquinas)}
+            fill="#ffe08a"
+            fillOpacity="0.35"
+            stroke="#ffc95c"
+            strokeWidth="0.09"
+            strokeLinejoin="round"
+          >
+            <title>{`Produce con el ${ficha}`}</title>
+          </polygon>
+          <circle
+            cx={centro.x}
+            cy={centro.y}
+            r="0.4"
+            fill="none"
+            stroke="#fff"
+            strokeWidth="0.06"
+          />
+        </g>
+      )}
       {ficha !== null && (
         <g>
           <circle

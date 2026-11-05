@@ -1,4 +1,4 @@
-import { efectoDe } from './efectos';
+import { efectoDe, sumaDeDados } from './efectos';
 
 describe('efectoDe', () => {
   it.each([
@@ -28,5 +28,19 @@ describe('efectoDe', () => {
   it('lo demás no suena', () => {
     expect(efectoDe({ tipo: 'FASE_CAMBIADA' }, 'j1')).toBeNull();
     expect(efectoDe({ tipo: 'EVENTO_FUTURO' }, null)).toBeNull();
+  });
+});
+
+describe('sumaDeDados', () => {
+  it('suma los dos dados de una tirada', () => {
+    expect(sumaDeDados({ tipo: 'DADOS_TIRADOS', dados: [3, 4] })).toBe(7);
+    expect(sumaDeDados({ tipo: 'DADOS_TIRADOS', dados: [6, 6] })).toBe(12);
+  });
+
+  it('con otro evento o con dados mal formados da null', () => {
+    expect(sumaDeDados({ tipo: 'TURNO_TERMINADO' })).toBeNull();
+    expect(sumaDeDados({ tipo: 'DADOS_TIRADOS' })).toBeNull();
+    expect(sumaDeDados({ tipo: 'DADOS_TIRADOS', dados: ['3', 4] })).toBeNull();
+    expect(sumaDeDados({ tipo: 'DADOS_TIRADOS', dados: 'x' })).toBeNull();
   });
 });

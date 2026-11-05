@@ -5,7 +5,7 @@ type Props = {
 };
 
 /** Posición de los puntos de cada cara, en una cuadrícula de 3 por 3. */
-const PUNTOS: Record<number, readonly (readonly [number, number])[]> = {
+export const PUNTOS: Record<number, readonly (readonly [number, number])[]> = {
   1: [[1, 1]],
   2: [
     [0, 0],

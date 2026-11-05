@@ -28,6 +28,8 @@ type Props = {
   previa: string | null;
   /** Aristas ya elegidas para "construcción de carreteras". */
   aristasElegidas?: readonly string[];
+  /** El número que acaba de salir: sus casillas laten. */
+  numeroResaltado?: number | null;
   onVertice: (id: string) => void;
   onArista: (id: string) => void;
   onCasilla: (hex: Hex) => void;
@@ -94,6 +96,7 @@ export function Tablero({
   sitios,
   previa,
   aristasElegidas = SIN_ARISTAS,
+  numeroResaltado = null,
   onVertice,
   onArista,
   onCasilla,
@@ -111,7 +114,13 @@ export function Tablero({
       <DefinicionesDeCasilla />
 
       {mesa.casillas.map((c) => (
-        <Casilla key={claveHex(c.hex)} terreno={c.terreno} ficha={c.ficha} centro={c.centro} />
+        <Casilla
+          key={claveHex(c.hex)}
+          terreno={c.terreno}
+          ficha={c.ficha}
+          centro={c.centro}
+          resaltada={numeroResaltado !== null && c.ficha === numeroResaltado}
+        />
       ))}
 
       {mesa.puertos.map((p) => {

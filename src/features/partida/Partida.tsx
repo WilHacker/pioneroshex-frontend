@@ -226,6 +226,7 @@ export function Partida({ credencial, nombres }: Props) {
             sitios={sitiosDe(modo, sitios)}
             previa={previa}
             aristasElegidas={carreteras}
+            numeroResaltado={juego.resaltado}
             onVertice={(id) => tocarSitio(id, accionDeVertice(vista, modo, id))}
             onArista={alArista}
             onCasilla={alCasilla}
@@ -244,6 +245,7 @@ export function Partida({ credencial, nombres }: Props) {
           <div className="absolute right-1 bottom-1">
             <Dados
               dados={vista.dados}
+              tirada={juego.tiradas}
               puedeTirar={puedeTirar}
               ocupado={ocupado}
               onTirar={() => alAccion({ tipo: 'TIRAR_DADOS' })}

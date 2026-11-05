@@ -25,3 +25,10 @@ export function efectoDe(evento: EventoJuego, yo: string | null): Efecto | null 
       return null;
   }
 }
+
+/** La suma de los dos dados de un evento `DADOS_TIRADOS`, o `null` si no lo es o viene mal. */
+export function sumaDeDados(evento: EventoJuego): number | null {
+  if (evento.tipo !== 'DADOS_TIRADOS' || !Array.isArray(evento.dados)) return null;
+  const [a, b] = evento.dados;
+  return typeof a === 'number' && typeof b === 'number' ? a + b : null;
+}
