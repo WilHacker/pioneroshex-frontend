@@ -1,5 +1,5 @@
 import { conectar, type Manejadores } from './conexion';
-import { inicioDePrueba, vistaDePrueba } from './pruebas';
+import { SIN_SITIOS, inicioDePrueba, vistaDePrueba } from './pruebas';
 
 type Escucha = (...args: unknown[]) => void;
 
@@ -66,6 +66,7 @@ describe('conectar', () => {
       vista: vistaDePrueba(),
       eventos: [{ tipo: 'TURNO_TERMINADO' }],
       acciones: [],
+      sitios: SIN_SITIOS,
     };
     emitir('juego:notificacion', notificacion);
     expect(m.alNotificar).toHaveBeenCalledWith(notificacion);

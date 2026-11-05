@@ -1,4 +1,4 @@
-import type { Inicio, Mesa, Vista } from './esquemas';
+import type { Inicio, Mesa, Sitios, Vista } from './esquemas';
 
 // Datos de ejemplo con la forma real del backend, para los tests de lib/ y features/.
 
@@ -30,6 +30,16 @@ export const mesaDePrueba: Mesa = {
   puertos: [{ arista: 'a2', vertices: [V2, V3], tipo: 'GENERICO' }],
 };
 
+export const SIN_SITIOS: Sitios = {
+  poblados: [],
+  ciudades: [],
+  caminos: [],
+  ladron: [],
+  caballero: [],
+  carreteras: [],
+};
+
+const piezas = { caminos: 13, poblados: 3, ciudades: 4 };
 const sinRecursos = { MADERA: 0, LADRILLO: 0, OVEJA: 0, TRIGO: 0, MINERAL: 0 };
 
 export function vistaDePrueba(cambios: Partial<Vista> = {}): Vista {
@@ -42,6 +52,7 @@ export function vistaDePrueba(cambios: Partial<Vista> = {}): Vista {
         totalCartas: 3,
         totalCartasDesarrollo: 0,
         caballerosJugados: 0,
+        piezasRestantes: piezas,
         puntos: 2,
         recursos: { ...sinRecursos, MADERA: 2, TRIGO: 1 },
         cartasDesarrollo: [],
@@ -51,6 +62,7 @@ export function vistaDePrueba(cambios: Partial<Vista> = {}): Vista {
         totalCartas: 4,
         totalCartasDesarrollo: 1,
         caballerosJugados: 0,
+        piezasRestantes: piezas,
         puntos: 2,
         recursos: null,
         cartasDesarrollo: null,
@@ -60,6 +72,7 @@ export function vistaDePrueba(cambios: Partial<Vista> = {}): Vista {
         totalCartas: 0,
         totalCartasDesarrollo: 0,
         caballerosJugados: 0,
+        piezasRestantes: piezas,
         puntos: 2,
         recursos: null,
         cartasDesarrollo: null,
@@ -94,6 +107,7 @@ export function inicioDePrueba(cambios: Partial<Inicio> = {}): Inicio {
       { tipo: 'TERMINAR_TURNO', disponible: true },
       { tipo: 'TIRAR_DADOS', disponible: false, motivo: 'FASE_INCORRECTA' },
     ],
+    sitios: SIN_SITIOS,
     ...cambios,
   };
 }

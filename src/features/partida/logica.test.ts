@@ -1,4 +1,4 @@
-import { vistaDePrueba } from '@/lib/pruebas';
+import { SIN_SITIOS, vistaDePrueba } from '@/lib/pruebas';
 import {
   accionDeArista,
   accionDeLadron,
@@ -8,6 +8,7 @@ import {
   mensajeDeFase,
   modoEfectivo,
   objetivoDe,
+  sitiosDe,
 } from './logica';
 
 const nombre = (id: string): string => ({ j1: 'Ana', j2: 'Beto' })[id] ?? id;
@@ -129,7 +130,7 @@ describe('mensajeDeFase', () => {
     expect(mensajeDeFase(v({ fase: 'PREPARACION_CAMINO' }), nombre)).toMatch(/camino/i);
     expect(mensajeDeFase(v({ fase: 'PRE_TIRADA' }), nombre)).toMatch(/dados/i);
     expect(mensajeDeFase(v({ fase: 'MOVER_LADRON' }), nombre)).toMatch(/ladrón/i);
-    expect(mensajeDeFase(v({ fase: 'FASE_PRINCIPAL' }), nombre)).toMatch(/construir|comerciar/i);
+    expect(mensajeDeFase(v({ fase: 'FASE_PRINCIPAL' }), nombre)).toBe('Tu turno');
     expect(
       mensajeDeFase(v({ fase: 'CONSTRUCCION_ESPECIAL', turnoEspecialDe: 'j1' }), nombre),
     ).toMatch(/especial/i);
@@ -145,17 +146,44 @@ describe('mensajeDeFase', () => {
       turnoDe: 'j2',
       descartesPendientes: { j1: 4 },
     });
-    expect(mensajeDeFase(vista, nombre)).toBe('Debes descartar 4 cartas');
+    expect(mensajeDeFase(vista, nombre)).toBe('Descarta 4');
     const otros = vistaDePrueba({
       fase: 'DESCARTE',
       turnoDe: 'j2',
       descartesPendientes: { j3: 2 },
     });
-    expect(mensajeDeFase(otros, nombre)).toBe('Esperando los descartes de los demás');
+    expect(mensajeDeFase(otros, nombre)).toBe('Esperando descartes');
   });
 
   it('al terminar, anuncia al ganador', () => {
     const vista = vistaDePrueba({ fase: 'FIN', turnoDe: null, ganador: 'j2' });
     expect(mensajeDeFase(vista, nombre)).toBe('¡Ganó Beto!');
+  });
+});
+
+describe('sitiosDe', () => {
+  const sitios = {
+    poblados: ['v1'],
+    ciudades: ['v2'],
+    caminos: ['a1'],
+    ladron: ['0,0'],
+    caballero: ['1,0'],
+    carreteras: ['a2'],
+  };
+
+  it.each([
+    ['POBLADO', ['v1']],
+    ['CIUDAD', ['v2']],
+    ['CAMINO', ['a1']],
+    ['CARRETERAS', ['a2']],
+    ['LADRON', ['0,0']],
+    ['CABALLERO', ['1,0']],
+    [null, []],
+  ] as const)('en modo %s resalta %j', (modo, esperado) => {
+    expect(sitiosDe(modo, sitios)).toEqual(esperado);
+  });
+
+  it('sin sitios no hay nada que resaltar', () => {
+    expect(sitiosDe('POBLADO', SIN_SITIOS)).toEqual([]);
   });
 });

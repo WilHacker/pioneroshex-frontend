@@ -1,12 +1,13 @@
 import type { Terreno } from '@/lib/esquemas';
 
+/** Color base de cada terreno (propio). El tablero le saca un degradado y un borde. */
 export const COLOR_TERRENO: Record<Terreno, string> = {
-  BOSQUE: '#2f7d3b',
-  PASTO: '#9bd36b',
-  CAMPO: '#f2d45c',
-  COLINA: '#d1743c',
-  MONTANA: '#8b95a3',
-  DESIERTO: '#e8d9a8',
+  BOSQUE: '#3c8a4d',
+  PASTO: '#9acb6a',
+  CAMPO: '#eec84e',
+  COLINA: '#cf7345',
+  MONTANA: '#8593a6',
+  DESIERTO: '#e6d6a4',
 };
 
 export const NOMBRE_TERRENO: Record<Terreno, string> = {
@@ -19,18 +20,29 @@ export const NOMBRE_TERRENO: Record<Terreno, string> = {
 };
 
 const COLORES_JUGADOR = [
-  '#e11d48',
-  '#2563eb',
-  '#16a34a',
-  '#f59e0b',
-  '#9333ea',
-  '#0891b2',
-  '#be185d',
-  '#4d7c0f',
-  '#475569',
-  '#c2410c',
+  '#e0344f',
+  '#2f6fe0',
+  '#2fa84f',
+  '#f08c1a',
+  '#8a4fd6',
+  '#14a3b8',
+  '#d6339a',
+  '#6f9a1c',
+  '#5b6678',
+  '#b8541c',
 ];
 
 /** Color de un jugador según su lugar en el orden. Siempre va acompañado de su nombre o número. */
 export const colorDeJugador = (indice: number): string =>
-  COLORES_JUGADOR[indice % COLORES_JUGADOR.length] ?? '#475569';
+  COLORES_JUGADOR[indice % COLORES_JUGADOR.length] ?? '#5b6678';
+
+/** Mezcla un color `#rrggbb` con blanco: `factor` 0 lo deja igual, 1 lo vuelve blanco. */
+export function aclarar(color: string, factor: number): string {
+  const canal = (i: number): string => {
+    const valor = parseInt(color.slice(1 + i * 2, 3 + i * 2), 16);
+    return Math.round(valor + (255 - valor) * factor)
+      .toString(16)
+      .padStart(2, '0');
+  };
+  return `#${canal(0)}${canal(1)}${canal(2)}`;
+}

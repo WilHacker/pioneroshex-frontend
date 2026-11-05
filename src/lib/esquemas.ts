@@ -67,6 +67,7 @@ const esquemaJugadorVista = z.object({
   totalCartas: z.number(),
   totalCartasDesarrollo: z.number(),
   caballerosJugados: z.number(),
+  piezasRestantes: z.object({ caminos: z.number(), poblados: z.number(), ciudades: z.number() }),
   puntos: z.number(),
   recursos: esquemaCantidades.nullable(),
   cartasDesarrollo: z.array(esquemaCarta).nullable(),
@@ -122,10 +123,22 @@ export type AccionDisponible = z.infer<typeof esquemaAccionDisponible>;
 export const esquemaEvento = z.looseObject({ tipo: z.string() });
 export type EventoJuego = z.infer<typeof esquemaEvento>;
 
+/** Dónde puede actuar el jugador ahora (lo calcula el servidor). Casillas como `"q,r"`. */
+export const esquemaSitios = z.object({
+  poblados: z.array(z.string()),
+  ciudades: z.array(z.string()),
+  caminos: z.array(z.string()),
+  ladron: z.array(z.string()),
+  caballero: z.array(z.string()),
+  carreteras: z.array(z.string()),
+});
+export type Sitios = z.infer<typeof esquemaSitios>;
+
 export const esquemaNotificacion = z.object({
   vista: esquemaVista,
   eventos: z.array(esquemaEvento),
   acciones: z.array(esquemaAccionDisponible),
+  sitios: esquemaSitios,
 });
 export type Notificacion = z.infer<typeof esquemaNotificacion>;
 
@@ -134,6 +147,7 @@ export const esquemaInicio = z.object({
   mesa: esquemaMesa,
   vista: esquemaVista,
   acciones: z.array(esquemaAccionDisponible),
+  sitios: esquemaSitios,
 });
 export type Inicio = z.infer<typeof esquemaInicio>;
 

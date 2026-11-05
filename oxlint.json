@@ -115,7 +115,12 @@
       }
     },
     {
-      "files": ["src/features/partida/Tablero.tsx"],
+      "files": [
+        "src/features/partida/Tablero.tsx",
+        "src/components/arte/**/*.tsx",
+        "src/features/partida/CartaRecurso.tsx",
+        "src/features/partida/CartasDesarrollo.tsx"
+      ],
       "rules": {
         "jsx-a11y/prefer-tag-over-role": "off"
       }

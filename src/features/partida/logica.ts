@@ -1,4 +1,4 @@
-import type { AccionDisponible, Hex, Vista } from '@/lib/esquemas';
+import type { AccionDisponible, Hex, Sitios, Vista } from '@/lib/esquemas';
 import type { Objetivo } from './Tablero';
 
 /** Lo que el jugador está haciendo con el tablero: qué pasará al tocar un vértice, arista o casilla. */
@@ -41,6 +41,26 @@ export function objetivoDe(modo: Modo | null): Objetivo {
   }
 }
 
+/** Los sitios que hay que resaltar en el tablero para lo que se está haciendo. */
+export function sitiosDe(modo: Modo | null, sitios: Sitios): readonly string[] {
+  switch (modo) {
+    case 'POBLADO':
+      return sitios.poblados;
+    case 'CIUDAD':
+      return sitios.ciudades;
+    case 'CAMINO':
+      return sitios.caminos;
+    case 'CARRETERAS':
+      return sitios.carreteras;
+    case 'LADRON':
+      return sitios.ladron;
+    case 'CABALLERO':
+      return sitios.caballero;
+    default:
+      return [];
+  }
+}
+
 export function accionDeVertice(vista: Vista, modo: Modo | null, vertice: string): object | null {
   if (modo === 'POBLADO') {
     const tipo =
@@ -70,14 +90,14 @@ export function disponible(acciones: readonly AccionDisponible[], tipo: string):
   return acciones.some((a) => a.tipo === tipo && a.disponible);
 }
 
-/** Una línea que dice qué toca hacer ahora. */
+/** Dos o tres palabras que dicen qué toca hacer ahora. */
 export function mensajeDeFase(vista: Vista, nombreDe: (id: string) => string): string {
   if (vista.fase === 'FIN') {
     return vista.ganador === null ? 'La partida terminó' : `¡Ganó ${nombreDe(vista.ganador)}!`;
   }
   if (vista.fase === 'DESCARTE') {
     const mio = vista.yo === null ? 0 : (vista.descartesPendientes[vista.yo] ?? 0);
-    return mio > 0 ? `Debes descartar ${mio} cartas` : 'Esperando los descartes de los demás';
+    return mio > 0 ? `Descarta ${mio}` : 'Esperando descartes';
   }
   if (!esMiTurno(vista)) {
     const enTurno = vista.fase === 'CONSTRUCCION_ESPECIAL' ? vista.turnoEspecialDe : vista.turnoDe;
@@ -85,16 +105,16 @@ export function mensajeDeFase(vista: Vista, nombreDe: (id: string) => string): s
   }
   switch (vista.fase) {
     case 'PREPARACION_POBLADO':
-      return 'Tu turno: toca un vértice libre para poner tu poblado';
+      return 'Pon tu poblado';
     case 'PREPARACION_CAMINO':
-      return 'Tu turno: toca una arista junto a tu poblado para poner un camino';
+      return 'Pon tu camino';
     case 'PRE_TIRADA':
-      return 'Tu turno: tira los dados';
+      return 'Tira los dados';
     case 'MOVER_LADRON':
-      return 'Mueve el ladrón: toca una casilla';
+      return 'Mueve el ladrón';
     case 'CONSTRUCCION_ESPECIAL':
-      return 'Construcción especial: puedes construir o pasar';
+      return 'Construcción especial';
     default:
-      return 'Tu turno: puedes construir, comerciar o terminar el turno';
+      return 'Tu turno';
   }
 }

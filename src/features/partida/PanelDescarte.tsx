@@ -1,6 +1,8 @@
 import { useState } from 'react';
+import { IconoAccion } from '@/components/arte/IconosEstado';
 import { RECURSOS, type Cantidades } from '@/lib/esquemas';
 import { NOMBRE_RECURSO } from '@/lib/mensajes';
+import { CartaRecurso } from './CartaRecurso';
 
 type Props = {
   /** Cuántas cartas hay que descartar. */
@@ -12,55 +14,65 @@ type Props = {
 
 const VACIO: Cantidades = { MADERA: 0, LADRILLO: 0, OVEJA: 0, TRIGO: 0, MINERAL: 0 };
 
+/** Descartar tocando cartas: las de arriba son tu mano; las de abajo, lo que vas a soltar. */
 export function PanelDescarte({ cantidad, mano, ocupado, onDescartar }: Props) {
   const [elegido, setElegido] = useState<Cantidades>(VACIO);
   const total = RECURSOS.reduce((suma, r) => suma + elegido[r], 0);
-  const cambiar = (r: (typeof RECURSOS)[number], delta: number) =>
+  const cambiar = (r: (typeof RECURSOS)[number], delta: number): void =>
     setElegido((previo) => ({ ...previo, [r]: Math.max(0, Math.min(mano[r], previo[r] + delta)) }));
+  const sueltas = RECURSOS.filter((r) => elegido[r] > 0);
 
   return (
-    <section aria-labelledby="titulo-descarte" className="rounded-lg border-2 border-red-500 p-3">
-      <h2 id="titulo-descarte" className="text-sm font-semibold tracking-wide uppercase">
-        Sacaron un 7: descarta {cantidad} cartas
+    <section
+      aria-labelledby="titulo-descarte"
+      className="flex flex-col items-center gap-3 rounded-2xl border-2 border-coral bg-niebla p-3 text-tinta shadow-2xl"
+    >
+      <h2 id="titulo-descarte" className="text-lg font-extrabold">
+        Descarta {cantidad}
       </h2>
-      <ul className="mt-2 flex flex-col gap-1 text-sm">
+      <fieldset className="flex gap-2">
+        <legend className="sr-only">Tu mano</legend>
         {RECURSOS.map((r) => (
-          <li key={r} className="flex items-center gap-2">
-            <span className="w-20">{NOMBRE_RECURSO[r]}</span>
-            <button
-              type="button"
-              aria-label={`Quitar ${NOMBRE_RECURSO[r]}`}
-              onClick={() => cambiar(r, -1)}
-              className="size-7 rounded border"
-            >
-              −
-            </button>
-            <output aria-label={`${NOMBRE_RECURSO[r]} a descartar`} className="w-6 text-center">
-              {elegido[r]}
-            </output>
-            <button
-              type="button"
-              aria-label={`Añadir ${NOMBRE_RECURSO[r]}`}
-              onClick={() => cambiar(r, 1)}
-              className="size-7 rounded border"
-            >
-              +
-            </button>
-            <span className="text-xs text-zinc-500">de {mano[r]}</span>
-          </li>
+          <CartaRecurso
+            key={r}
+            recurso={r}
+            cantidad={mano[r] - elegido[r]}
+            desactivada={mano[r] - elegido[r] === 0}
+            etiqueta={`Añadir ${NOMBRE_RECURSO[r]}`}
+            onClick={() => cambiar(r, 1)}
+          />
         ))}
-      </ul>
+      </fieldset>
+      <fieldset className="flex min-h-[3.4rem] items-center gap-2">
+        <legend className="sr-only">A descartar</legend>
+        {sueltas.length === 0 ? (
+          <span className="text-sm text-tinta-suave">Toca las cartas que vas a soltar</span>
+        ) : (
+          sueltas.map((r) => (
+            <CartaRecurso
+              key={r}
+              recurso={r}
+              tamano="pequena"
+              cantidad={elegido[r]}
+              etiqueta={`Quitar ${NOMBRE_RECURSO[r]}`}
+              onClick={() => cambiar(r, -1)}
+            />
+          ))
+        )}
+      </fieldset>
       <button
         type="button"
+        aria-label={`Descartar (${total} de ${cantidad})`}
         disabled={ocupado || total !== cantidad}
         onClick={() =>
           onDescartar(
             Object.fromEntries(RECURSOS.filter((r) => elegido[r] > 0).map((r) => [r, elegido[r]])),
           )
         }
-        className="mt-2 rounded border px-3 py-1.5 text-sm font-medium enabled:hover:bg-red-100 enabled:hover:text-zinc-900 disabled:opacity-40"
+        className="flex items-center gap-2 rounded-full bg-coral px-5 py-2 font-extrabold text-white enabled:hover:brightness-110 disabled:opacity-40"
       >
-        Descartar ({total}/{cantidad})
+        <IconoAccion tipo="ACEPTAR" />
+        {total}/{cantidad}
       </button>
     </section>
   );

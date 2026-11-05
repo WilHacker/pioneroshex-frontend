@@ -1,5 +1,27 @@
 @import 'tailwindcss';
 
+/*
+ * Base visual de PionerosHex. Mar profundo de noche, paneles de niebla con tinta de pino y un solo
+ * color de acción (azafrán). Los terrenos y los jugadores tienen su propia paleta en el código del
+ * tablero, para que ninguna casilla dependa del tema claro u oscuro de la página.
+ */
+@theme {
+  --color-mar-profundo: #0c3340;
+  --color-mar-laguna: #17707a;
+  --color-espuma: #8fd3cf;
+  --color-niebla: #e9f1ef;
+  --color-niebla-suave: #f5f9f8;
+  --color-tinta: #12312f;
+  --color-tinta-suave: #4a6663;
+  --color-borde: #b9cfca;
+  --color-azafran: #f2b233;
+  --color-azafran-claro: #ffc95c;
+  --color-coral: #e4572e;
+  --color-hoja: #3fae6b;
+  --font-juego:
+    ui-rounded, 'Nunito', 'Arial Rounded MT Bold', 'Segoe UI', system-ui, -apple-system, sans-serif;
+}
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
@@ -15,4 +37,67 @@
 body {
   background: var(--background);
   color: var(--foreground);
+}
+
+/* El mar: un degradado con ondas suaves dibujadas con círculos concéntricos tenues. */
+.mar {
+  background-color: var(--color-mar-profundo);
+  background-image:
+    radial-gradient(ellipse at 42% 38%, rgb(23 112 122 / 0.9) 0%, rgb(12 51 64 / 0) 65%),
+    radial-gradient(circle at 20% 80%, rgb(143 211 207 / 0.08) 0 18%, transparent 19%),
+    radial-gradient(circle at 80% 20%, rgb(143 211 207 / 0.07) 0 22%, transparent 23%);
+}
+
+/* Los sitios legales del tablero respiran para llamar la atención sin distraer. */
+@keyframes respirar {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* Los dados giran un instante al tirarse. */
+@keyframes rodar {
+  0% {
+    transform: rotate(-24deg) translateY(-6px) scale(0.92);
+  }
+  60% {
+    transform: rotate(12deg) translateY(0) scale(1.04);
+  }
+  100% {
+    transform: rotate(0) translateY(0) scale(1);
+  }
+}
+
+/* Un punto de victoria sube y se desvanece donde se ganó. */
+@keyframes subir {
+  0% {
+    opacity: 0;
+    transform: translateY(0);
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-0.5px);
+  }
+}
+
+.sitio {
+  animation: respirar 1.6s ease-in-out infinite;
+}
+
+.dado-rodando {
+  animation: rodar 0.45s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sitio,
+  .dado-rodando {
+    animation: none;
+  }
 }
