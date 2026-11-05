@@ -113,6 +113,12 @@
           }
         ]
       }
+    },
+    {
+      "files": ["src/features/partida/Tablero.tsx"],
+      "rules": {
+        "jsx-a11y/prefer-tag-over-role": "off"
+      }
     }
   ]
 }

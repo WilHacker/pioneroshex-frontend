@@ -1,0 +1,161 @@
+import { vistaDePrueba } from '@/lib/pruebas';
+import {
+  accionDeArista,
+  accionDeLadron,
+  accionDeVertice,
+  disponible,
+  esMiTurno,
+  mensajeDeFase,
+  modoEfectivo,
+  objetivoDe,
+} from './logica';
+
+const nombre = (id: string): string => ({ j1: 'Ana', j2: 'Beto' })[id] ?? id;
+
+describe('esMiTurno', () => {
+  it('en el turno normal, cuando turnoDe soy yo', () => {
+    expect(esMiTurno(vistaDePrueba())).toBe(true);
+    expect(esMiTurno(vistaDePrueba({ turnoDe: 'j2' }))).toBe(false);
+  });
+
+  it('en la construcción especial manda turnoEspecialDe, no turnoDe', () => {
+    const base = { fase: 'CONSTRUCCION_ESPECIAL' as const, turnoDe: 'j1' };
+    expect(esMiTurno(vistaDePrueba({ ...base, turnoEspecialDe: 'j2' }))).toBe(false);
+    expect(esMiTurno(vistaDePrueba({ ...base, turnoEspecialDe: 'j1' }))).toBe(true);
+  });
+
+  it('con la partida terminada o como espectador nunca es mi turno', () => {
+    expect(esMiTurno(vistaDePrueba({ fase: 'FIN', turnoDe: null }))).toBe(false);
+    expect(esMiTurno(vistaDePrueba({ yo: null }))).toBe(false);
+  });
+});
+
+describe('modoEfectivo', () => {
+  it('en la preparación y al mover el ladrón lo fija la fase, no el jugador', () => {
+    expect(modoEfectivo(vistaDePrueba({ fase: 'PREPARACION_POBLADO' }), 'CAMINO')).toBe('POBLADO');
+    expect(modoEfectivo(vistaDePrueba({ fase: 'PREPARACION_CAMINO' }), null)).toBe('CAMINO');
+    expect(modoEfectivo(vistaDePrueba({ fase: 'MOVER_LADRON' }), null)).toBe('LADRON');
+  });
+
+  it('en la fase principal respeta lo que eligió el jugador', () => {
+    expect(modoEfectivo(vistaDePrueba(), 'CIUDAD')).toBe('CIUDAD');
+    expect(modoEfectivo(vistaDePrueba(), null)).toBeNull();
+  });
+
+  it('sin turno no hay modo, elija lo que elija', () => {
+    expect(modoEfectivo(vistaDePrueba({ turnoDe: 'j2' }), 'POBLADO')).toBeNull();
+    expect(modoEfectivo(vistaDePrueba({ fase: 'FIN', turnoDe: null }), 'POBLADO')).toBeNull();
+  });
+});
+
+describe('objetivoDe', () => {
+  it.each([
+    ['POBLADO', 'POBLADOS'],
+    ['CIUDAD', 'CIUDADES'],
+    ['CAMINO', 'ARISTAS'],
+    ['CARRETERAS', 'ARISTAS'],
+    ['LADRON', 'CASILLAS'],
+    ['CABALLERO', 'CASILLAS'],
+    [null, null],
+  ] as const)('%s → %s', (modo, objetivo) => {
+    expect(objetivoDe(modo)).toBe(objetivo);
+  });
+});
+
+describe('acciones del tablero', () => {
+  it('poblado: inicial en la preparación, normal después', () => {
+    expect(accionDeVertice(vistaDePrueba({ fase: 'PREPARACION_POBLADO' }), 'POBLADO', 'v')).toEqual(
+      {
+        tipo: 'COLOCAR_POBLADO_INICIAL',
+        vertice: 'v',
+      },
+    );
+    expect(accionDeVertice(vistaDePrueba(), 'POBLADO', 'v')).toEqual({
+      tipo: 'CONSTRUIR_POBLADO',
+      vertice: 'v',
+    });
+    expect(accionDeVertice(vistaDePrueba(), 'CIUDAD', 'v')).toEqual({
+      tipo: 'CONSTRUIR_CIUDAD',
+      vertice: 'v',
+    });
+    expect(accionDeVertice(vistaDePrueba(), 'CAMINO', 'v')).toBeNull();
+  });
+
+  it('camino: inicial en la preparación, normal después', () => {
+    expect(accionDeArista(vistaDePrueba({ fase: 'PREPARACION_CAMINO' }), 'CAMINO', 'a')).toEqual({
+      tipo: 'COLOCAR_CAMINO_INICIAL',
+      arista: 'a',
+    });
+    expect(accionDeArista(vistaDePrueba(), 'CAMINO', 'a')).toEqual({
+      tipo: 'CONSTRUIR_CAMINO',
+      arista: 'a',
+    });
+    expect(accionDeArista(vistaDePrueba(), 'POBLADO', 'a')).toBeNull();
+  });
+
+  it('ladrón: mover o jugar caballero, con o sin víctima', () => {
+    const destino = { q: 1, r: 0, s: -1 };
+    expect(accionDeLadron('LADRON', destino, 'j2')).toEqual({
+      tipo: 'MOVER_LADRON',
+      destino,
+      victima: 'j2',
+    });
+    expect(accionDeLadron('CABALLERO', destino, null)).toEqual({
+      tipo: 'JUGAR_CABALLERO',
+      destino,
+      victima: null,
+    });
+    expect(accionDeLadron('POBLADO', destino, null)).toBeNull();
+  });
+});
+
+describe('disponible', () => {
+  const acciones = [
+    { tipo: 'TIRAR_DADOS', disponible: true },
+    { tipo: 'TERMINAR_TURNO', disponible: false, motivo: 'FASE_INCORRECTA' },
+  ];
+
+  it('es verdadero solo si el servidor la marca disponible', () => {
+    expect(disponible(acciones, 'TIRAR_DADOS')).toBe(true);
+    expect(disponible(acciones, 'TERMINAR_TURNO')).toBe(false);
+    expect(disponible(acciones, 'NO_EXISTE')).toBe(false);
+  });
+});
+
+describe('mensajeDeFase', () => {
+  it('dice qué hacer en cada fase de mi turno', () => {
+    const v = (fase: Parameters<typeof vistaDePrueba>[0] & object) => vistaDePrueba(fase);
+    expect(mensajeDeFase(v({ fase: 'PREPARACION_POBLADO' }), nombre)).toMatch(/poblado/i);
+    expect(mensajeDeFase(v({ fase: 'PREPARACION_CAMINO' }), nombre)).toMatch(/camino/i);
+    expect(mensajeDeFase(v({ fase: 'PRE_TIRADA' }), nombre)).toMatch(/dados/i);
+    expect(mensajeDeFase(v({ fase: 'MOVER_LADRON' }), nombre)).toMatch(/ladrón/i);
+    expect(mensajeDeFase(v({ fase: 'FASE_PRINCIPAL' }), nombre)).toMatch(/construir|comerciar/i);
+    expect(
+      mensajeDeFase(v({ fase: 'CONSTRUCCION_ESPECIAL', turnoEspecialDe: 'j1' }), nombre),
+    ).toMatch(/especial/i);
+  });
+
+  it('si no es mi turno, dice de quién es', () => {
+    expect(mensajeDeFase(vistaDePrueba({ turnoDe: 'j2' }), nombre)).toBe('Turno de Beto');
+  });
+
+  it('avisa del descarte pendiente aunque no sea mi turno', () => {
+    const vista = vistaDePrueba({
+      fase: 'DESCARTE',
+      turnoDe: 'j2',
+      descartesPendientes: { j1: 4 },
+    });
+    expect(mensajeDeFase(vista, nombre)).toBe('Debes descartar 4 cartas');
+    const otros = vistaDePrueba({
+      fase: 'DESCARTE',
+      turnoDe: 'j2',
+      descartesPendientes: { j3: 2 },
+    });
+    expect(mensajeDeFase(otros, nombre)).toBe('Esperando los descartes de los demás');
+  });
+
+  it('al terminar, anuncia al ganador', () => {
+    const vista = vistaDePrueba({ fase: 'FIN', turnoDe: null, ganador: 'j2' });
+    expect(mensajeDeFase(vista, nombre)).toBe('¡Ganó Beto!');
+  });
+});
