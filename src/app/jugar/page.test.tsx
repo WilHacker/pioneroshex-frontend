@@ -5,7 +5,7 @@ import Pagina from './page';
 vi.mock('@/lib/api');
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }));
 
-describe('Página de inicio', () => {
+describe('Página de jugar', () => {
   it('muestra el título del juego y cómo entrar a una sala', () => {
     vi.mocked(consultarSalud).mockReturnValue(new Promise(() => {}));
 

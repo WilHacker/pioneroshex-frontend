@@ -28,7 +28,7 @@ src/app/         rutas de Next (App Router)
 src/config/      env.ts: variables públicas validadas con Zod
 src/lib/         lógica pura y cliente de API (consultarSalud...)
 src/components/  piezas de UI (archivos en PascalCase: EstadoServidor.tsx)
-src/features/    tablero, mano, comercio... (aún no existe)
+src/features/    lobby/ y partida/ (tablero, mano, comercio...)
 ```
 
 - Alias `@/*` → `src/*`. Aquí sí se usa: Next resuelve los imports con su bundler.
@@ -119,8 +119,19 @@ Estado del cliente (se instala cuando haga falta, no antes):
 
 ## Contrato con el backend
 
-- URL en `NEXT_PUBLIC_API_URL` (`http://localhost:3001` en local). El backend solo acepta CORS desde
-  `http://localhost:3000`.
-- `GET /health` → `200 {"estado":"ok","baseDatos":"ok"}` o
-  `503 {"estado":"error","baseDatos":"caida"}`. Se valida en `src/lib/api.ts`.
+- URL en `NEXT_PUBLIC_API_URL` (`http://localhost:3001` en local). El backend acepta CORS solo de
+  los orígenes de su `FRONTEND_URL` (lista separada por comas).
+- `GET /health` → `200 {"estado":"ok","baseDatos":"ok"}` o `503 {"estado":"error","baseDatos":"caida"}`
+  (`src/lib/api.ts`).
+- Salas por HTTP: `POST /salas`, `POST /salas/:id/unirse`, `GET /salas/:id`,
+  `POST /salas/:id/empezar` (`Authorization: Bearer <token>`). **429** si una IP pasa de 20
+  peticiones por minuto. Cliente en `src/lib/salas.ts`.
+- Partida por socket.io: `juego:accion` (con acuse), `juego:inicio`, `juego:notificacion`,
+  `juego:error`. Esquemas Zod duplicados en `src/lib/esquemas.ts`; el protocolo completo está en la
+  nota `Contrato-de-Red` del vault de Obsidian.
+- Rutas: `/` portada (landing en la Fase 1), `/jugar` crear o unirse a una sala, `/sala/[id]` sala y
+  partida.
+- Jugar desde otro dispositivo de la casa: `pnpm dev` ya escucha en `0.0.0.0` y `next.config.ts`
+  permite orígenes `192.168.*.*` y `10.*.*.*`; falta poner la IP del PC en `NEXT_PUBLIC_API_URL`
+  (aquí) y en `FRONTEND_URL` (backend), y abrir los puertos 3000 y 3001 en el firewall de Windows.
 - Cualquier cambio de forma de una respuesta o evento se coordina en **los dos repos**.
