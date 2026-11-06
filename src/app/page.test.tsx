@@ -1,12 +1,15 @@
 import { render, screen } from '@testing-library/react';
+import { yo } from '@/lib/cuentas';
 import { verResumen } from '@/lib/salas';
 import PaginaInicio from './page';
 
 vi.mock('@/lib/salas');
+vi.mock('@/lib/cuentas');
 
 describe('Página de inicio', () => {
   it('junta la portada con el tablero de demostración', () => {
     vi.mocked(verResumen).mockReturnValue(new Promise(() => {}));
+    vi.mocked(yo).mockResolvedValue(null);
 
     render(<PaginaInicio />);
 

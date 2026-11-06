@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useSyncExternalStore, type SyntheticEvent } from 'react';
 import { IconoSala } from '@/components/arte/IconosPortada';
+import { useCuenta } from '@/components/useCuenta';
 import type { Credencial, SalaAbierta } from '@/lib/esquemas';
 import { crearSala, listarSalas, unirseASala } from '@/lib/salas';
 import { guardarCredencial, guardarNombre, leerNombre } from '@/lib/sesion';
@@ -71,7 +72,7 @@ function Lugares({ ocupados, maximo }: { ocupados: number; maximo: number }) {
         <span
           key={i}
           aria-hidden="true"
-          className={`size-2.5 rounded-full ${i < ocupados ? 'bg-laguna' : 'bg-tinta/15'}`}
+          className={`size-2.5 rounded-full ${i < ocupados ? 'bg-mar-laguna' : 'bg-tinta/15'}`}
         />
       ))}
       <span className="sr-only">{`${ocupados} de ${maximo} jugadores`}</span>
@@ -130,7 +131,10 @@ function ListaDeSalas({ salas, fallo, deshabilitado, onEntrar }: ListaProps) {
 /** Pantalla de entrada: elegir nombre y buscar sala, crear una o unirse con un código. */
 export function Lobby() {
   const router = useRouter();
-  const [nombre, setNombre] = useNombre();
+  const { usuario } = useCuenta();
+  const [escrito, setNombre] = useNombre();
+  // Con sesión iniciada el jugador es su cuenta: el servidor usa el nombre de la cuenta.
+  const nombre = usuario?.nombre ?? escrito;
   const [pestana, setPestana] = useState<Pestana>('abiertas');
   const [publica, setPublica] = useState(false);
   const [codigo, setCodigo] = useState('');
@@ -166,16 +170,40 @@ export function Lobby() {
       aria-label="Entrar a jugar"
       className="flex w-full max-w-xl flex-col gap-4 rounded-3xl bg-niebla p-5 text-tinta shadow-2xl"
     >
-      <label className="flex flex-col gap-1 text-sm font-extrabold">
-        Tu nombre
-        <input
-          value={nombre}
-          onChange={(e) => setNombre(e.target.value)}
-          maxLength={NOMBRE_MAX}
-          autoComplete="name"
-          className="rounded-xl border-2 border-tinta/20 bg-white px-3 py-2 text-lg font-normal"
-        />
-      </label>
+      {usuario ? (
+        <p className="flex items-center justify-between gap-3 rounded-xl bg-white/70 px-4 py-2.5">
+          <span>
+            Juegas como <strong className="text-lg">{usuario.nombre}</strong>
+          </span>
+          <Link href="/perfil" className="font-bold text-mar-laguna underline">
+            Mi perfil
+          </Link>
+        </p>
+      ) : (
+        <>
+          <label className="flex flex-col gap-1 text-sm font-extrabold">
+            Tu nombre
+            <input
+              value={nombre}
+              onChange={(e) => setNombre(e.target.value)}
+              maxLength={NOMBRE_MAX}
+              autoComplete="name"
+              className="rounded-xl border-2 border-tinta/20 bg-white px-3 py-2 text-lg font-normal"
+            />
+          </label>
+          <p className="-mt-2 text-sm text-tinta/70">
+            ¿Quieres guardar tus partidas?{' '}
+            <Link href="/entrar" className="font-bold text-mar-laguna underline">
+              Entrar
+            </Link>{' '}
+            o{' '}
+            <Link href="/registro" className="font-bold text-mar-laguna underline">
+              crear cuenta
+            </Link>
+            .
+          </p>
+        </>
+      )}
 
       <div
         role="tablist"

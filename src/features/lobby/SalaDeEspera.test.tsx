@@ -1,11 +1,13 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { SalaPublica } from '@/lib/esquemas';
+import { yo } from '@/lib/cuentas';
 import { cambiarSala, empezarSala, unirseASala, verSala } from '@/lib/salas';
 import { guardarCredencial, leerCredencial } from '@/lib/sesion';
 import { SalaDeEspera } from './SalaDeEspera';
 
 vi.mock('@/lib/salas');
+vi.mock('@/lib/cuentas');
 // enlaceDeSala es lógica pura: se usa la real y solo se falsea lo que toca el almacenamiento.
 vi.mock('@/lib/sesion', async (importarOriginal) => ({
   ...(await importarOriginal<typeof import('@/lib/sesion')>()),
@@ -32,6 +34,7 @@ const sala = (extra: Partial<SalaPublica> = {}): SalaPublica => ({
 beforeEach(() => {
   vi.resetAllMocks();
   vi.mocked(leerCredencial).mockReturnValue(null);
+  vi.mocked(yo).mockResolvedValue(null);
 });
 
 describe('SalaDeEspera', () => {
@@ -191,5 +194,17 @@ describe('SalaDeEspera', () => {
 
     expect(screen.getByRole('button', { name: 'Copiar enlace' })).toBeInTheDocument();
     expect(screen.getByText('abcd1234')).toBeInTheDocument();
+  });
+
+  it('con sesión iniciada, unirse usa el nombre de la cuenta', async () => {
+    vi.mocked(yo).mockResolvedValue({ id: 'u9', nombre: 'Zoe' });
+    vi.mocked(verSala).mockResolvedValue(sala());
+    vi.mocked(unirseASala).mockResolvedValue(beto);
+    const usuario = userEvent.setup();
+    render(<SalaDeEspera salaId="abcd1234" onEmpezada={vi.fn()} />);
+
+    await usuario.click(await screen.findByRole('button', { name: 'Unirme a esta sala' }));
+
+    expect(unirseASala).toHaveBeenCalledWith('abcd1234', 'Zoe');
   });
 });

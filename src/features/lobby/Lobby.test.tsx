@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { yo } from '@/lib/cuentas';
 import { crearSala, listarSalas, unirseASala } from '@/lib/salas';
 import { guardarCredencial, guardarNombre, leerNombre } from '@/lib/sesion';
 import { Lobby } from './Lobby';
@@ -7,6 +8,7 @@ import { Lobby } from './Lobby';
 const push = vi.fn();
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push }) }));
 vi.mock('@/lib/salas');
+vi.mock('@/lib/cuentas');
 vi.mock('@/lib/sesion');
 
 const credencial = { salaId: 'abcd1234', jugadorId: 'j1', token: 'secreto' };
@@ -16,6 +18,7 @@ beforeEach(() => {
   vi.resetAllMocks();
   vi.mocked(leerNombre).mockReturnValue('');
   vi.mocked(listarSalas).mockResolvedValue([fila]);
+  vi.mocked(yo).mockResolvedValue(null);
 });
 
 describe('Lobby', () => {
@@ -119,5 +122,26 @@ describe('Lobby', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('La sala está llena');
     expect(screen.getByRole('button', { name: 'Entrar' })).toBeEnabled();
     expect(push).not.toHaveBeenCalled();
+  });
+
+  it('con sesión iniciada se juega como la cuenta: no pide nombre y entra con el de la cuenta', async () => {
+    vi.mocked(yo).mockResolvedValue({ id: 'u1', nombre: 'Zoe' });
+    vi.mocked(unirseASala).mockResolvedValue({ ...credencial, jugadorId: 'j2' });
+    const usuario = userEvent.setup();
+    render(<Lobby />);
+
+    expect(await screen.findByText('Zoe')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Tu nombre')).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Mi perfil' })).toHaveAttribute('href', '/perfil');
+    await usuario.click(await screen.findByRole('button', { name: 'Entrar' }));
+
+    expect(unirseASala).toHaveBeenCalledWith('abcd1234', 'Zoe');
+  });
+
+  it('como invitado ofrece entrar o crear una cuenta para guardar las partidas', async () => {
+    render(<Lobby />);
+
+    expect(await screen.findByRole('link', { name: 'Entrar' })).toHaveAttribute('href', '/entrar');
+    expect(screen.getByRole('link', { name: 'crear cuenta' })).toHaveAttribute('href', '/registro');
   });
 });

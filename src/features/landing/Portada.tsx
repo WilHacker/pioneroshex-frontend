@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState, type ReactNode } from 'react';
 import { IconoAmigos, IconoCuenta, IconoPersona, IconoSala } from '@/components/arte/IconosPortada';
+import { useCuenta } from '@/components/useCuenta';
 import { verResumen, type ResumenDeSalas } from '@/lib/salas';
 
 const REFRESCO_RESUMEN_MS = 30_000;
@@ -55,7 +56,7 @@ const CARTA =
   'group relative flex w-full flex-col items-center gap-2 rounded-2xl border-b-8 bg-niebla px-4 py-5 text-tinta shadow-xl transition sm:w-52';
 
 /** Las tres maneras de entrar, como cartas. Las cuentas llegan después: por ahora solo avisan. */
-function Cartas() {
+function Cartas({ conSesion }: { conSesion: boolean }) {
   return (
     <ul className="flex w-full max-w-3xl flex-col items-stretch justify-center gap-5 sm:flex-row sm:items-end">
       <li className="sm:-rotate-2">
@@ -68,20 +69,16 @@ function Cartas() {
         </Link>
       </li>
       <li>
-        <div
-          aria-disabled="true"
-          className={`${CARTA} cursor-not-allowed border-azafran opacity-80`}
-          title="Pronto"
+        <Link
+          href={conSesion ? '/perfil' : '/registro'}
+          className={`${CARTA} border-azafran hover:-translate-y-1`}
         >
-          <span className="text-laguna">
+          <span className="text-mar-laguna">
             <IconoCuenta tamano={44} />
           </span>
-          <span className="text-xl font-extrabold">Con cuenta</span>
-          <span className="text-sm">Guarda tus puntos</span>
-          <span className="absolute -top-3 right-3 rounded-full bg-azafran px-3 py-0.5 text-xs font-extrabold">
-            Pronto
-          </span>
-        </div>
+          <span className="text-xl font-extrabold">{conSesion ? 'Mi perfil' : 'Con cuenta'}</span>
+          <span className="text-sm">{conSesion ? 'Tus partidas' : 'Guarda tus puntos'}</span>
+        </Link>
       </li>
       <li className="sm:rotate-2">
         <Link href="/jugar" className={`${CARTA} border-coral hover:-translate-y-1`}>
@@ -98,28 +95,36 @@ function Cartas() {
 
 export function Portada({ tablero }: Props) {
   const resumen = useResumen();
+  const { usuario } = useCuenta();
 
   return (
     <div className="mar flex flex-1 flex-col items-center gap-8 px-4 pb-12 text-white">
       <header className="flex w-full max-w-5xl items-center justify-between py-4">
         <p className="text-2xl font-extrabold tracking-tight">PionerosHex</p>
         <nav aria-label="Cuenta" className="flex gap-2">
-          <button
-            type="button"
-            disabled
-            title="Pronto"
-            className="rounded-full px-4 py-2 font-bold text-white/70"
-          >
-            Entrar
-          </button>
-          <button
-            type="button"
-            disabled
-            title="Pronto"
-            className="rounded-full bg-white/15 px-4 py-2 font-bold text-white/70"
-          >
-            Crear cuenta
-          </button>
+          {usuario ? (
+            <Link
+              href="/perfil"
+              className="rounded-full bg-white/15 px-4 py-2 font-bold text-white hover:bg-white/25"
+            >
+              {usuario.nombre}
+            </Link>
+          ) : (
+            <>
+              <Link
+                href="/entrar"
+                className="rounded-full px-4 py-2 font-bold text-white hover:bg-white/10"
+              >
+                Entrar
+              </Link>
+              <Link
+                href="/registro"
+                className="rounded-full bg-white/15 px-4 py-2 font-bold text-white hover:bg-white/25"
+              >
+                Crear cuenta
+              </Link>
+            </>
+          )}
         </nav>
       </header>
 
@@ -151,7 +156,7 @@ export function Portada({ tablero }: Props) {
           </ul>
         )}
 
-        <Cartas />
+        <Cartas conSesion={usuario !== null} />
       </main>
     </div>
   );

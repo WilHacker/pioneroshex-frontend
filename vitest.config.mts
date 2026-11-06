@@ -10,6 +10,9 @@ export default defineConfig({
     setupFiles: ['./vitest.setup.ts'],
     // Valor fijo para los tests: no dependen del .env.local de cada máquina.
     env: { NEXT_PUBLIC_API_URL: 'http://localhost:3001' },
+    // Dibujar el tablero SVG en jsdom tarda segundos si el equipo está ocupado (servidores en
+    // marcha, otras pruebas): 5 s daba falsos fallos por tiempo en los tests del tablero.
+    testTimeout: 20_000,
     include: ['src/**/*.test.{ts,tsx}'],
     coverage: {
       provider: 'v8',

@@ -129,8 +129,10 @@ Estado del cliente (se instala cuando haga falta, no antes):
 - Partida por socket.io: `juego:accion` (con acuse), `juego:inicio`, `juego:notificacion`,
   `juego:error`. Esquemas Zod duplicados en `src/lib/esquemas.ts`; el protocolo completo está en la
   nota `Contrato-de-Red` del vault de Obsidian.
-- Rutas: `/` portada (landing en la Fase 1), `/jugar` crear o unirse a una sala, `/sala/[id]` sala y
-  partida.
+- Rutas: `/` portada, `/jugar` lobby, `/sala/[id]` sala y partida, y las de cuenta: `/entrar`,
+  `/registro`, `/recuperar`, `/perfil`. Cuentas en `src/features/cuenta/`; `src/lib/http.ts` manda
+  `credentials: 'include'` en todas las peticiones (la cookie de sesión es HttpOnly: JavaScript
+  nunca la ve) y `components/useCuenta.ts` pregunta quién tiene la sesión.
 - Jugar desde otro dispositivo de la casa: `pnpm dev` ya escucha en `0.0.0.0` y `next.config.ts`
   permite orígenes `192.168.*.*` y `10.*.*.*`; falta poner la IP del PC en `NEXT_PUBLIC_API_URL`
   (aquí) y en `FRONTEND_URL` (backend), y abrir los puertos 3000 y 3001 en el firewall de Windows.

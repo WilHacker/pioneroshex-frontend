@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState, type SyntheticEvent } from 'react';
 import { IconoPersona } from '@/components/arte/IconosPortada';
+import { useCuenta } from '@/components/useCuenta';
 import { aclarar, colorDeJugador } from '@/lib/colores';
 import type { Credencial, SalaPublica } from '@/lib/esquemas';
 import { cambiarSala, empezarSala, unirseASala, verSala } from '@/lib/salas';
@@ -82,7 +83,7 @@ function Invitar({ salaId }: { salaId: string }) {
         type="button"
         onClick={() => void copiar()}
         title="Copiar el enlace de invitación"
-        className="bg-laguna hover:bg-laguna/85 rounded-full px-4 py-2 font-extrabold text-white transition"
+        className="rounded-full bg-mar-laguna px-4 py-2 font-extrabold text-white transition hover:bg-mar-laguna/85"
       >
         {copiado ? '¡Copiado!' : 'Copiar enlace'}
       </button>
@@ -96,8 +97,11 @@ export function SalaDeEspera({ salaId, onEmpezada }: Props) {
   const [credencial, setCredencial] = useState<Credencial | null>(() => leerCredencial(salaId));
   const [sala, setSala] = useState<SalaPublica | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [nombre, setNombre] = useState('');
+  const [escrito, setNombre] = useState('');
   const [ocupado, setOcupado] = useState(false);
+  const { usuario } = useCuenta();
+  // Con sesión iniciada el servidor ya usa el nombre de la cuenta: se manda ese para que coincida.
+  const nombre = usuario?.nombre ?? escrito;
 
   useEffect(() => {
     const controlador = new AbortController();
@@ -199,7 +203,7 @@ export function SalaDeEspera({ salaId, onEmpezada }: Props) {
     Math.max(ASIENTOS_VISIBLES_MIN, sala.jugadores.length) - sala.jugadores.length;
 
   return (
-    <div className="mar flex flex-1 flex-col items-center gap-4 p-4 text-white">
+    <main className="mar flex flex-1 flex-col items-center gap-4 p-4 text-white">
       <header className="flex w-full max-w-2xl items-center justify-between py-2">
         <Link href="/" className="text-2xl font-extrabold tracking-tight">
           PionerosHex
@@ -269,12 +273,13 @@ export function SalaDeEspera({ salaId, onEmpezada }: Props) {
           <button
             type="button"
             disabled={ocupado || !sePuedeEmpezar}
+            title={
+              sePuedeEmpezar ? undefined : `Hacen falta al menos ${MINIMO_JUGADORES} jugadores`
+            }
             onClick={() => void empezar()}
             className={`${BOTON_PRINCIPAL} self-center`}
           >
-            {sePuedeEmpezar
-              ? 'Empezar la partida'
-              : `Faltan jugadores (mínimo ${MINIMO_JUGADORES})`}
+            {sePuedeEmpezar ? 'Empezar la partida' : 'Faltan jugadores'}
           </button>
         )}
         {credencial && !soyAnfitrion && !sala.empezada && (
@@ -289,6 +294,6 @@ export function SalaDeEspera({ salaId, onEmpezada }: Props) {
         )}
         {aviso}
       </section>
-    </div>
+    </main>
   );
 }

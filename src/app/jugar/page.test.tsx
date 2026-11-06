@@ -1,11 +1,13 @@
 import { render, screen } from '@testing-library/react';
 import { consultarSalud } from '@/lib/api';
+import { yo } from '@/lib/cuentas';
 import { listarSalas } from '@/lib/salas';
 import { leerNombre } from '@/lib/sesion';
 import Pagina from './page';
 
 vi.mock('@/lib/api');
 vi.mock('@/lib/salas');
+vi.mock('@/lib/cuentas');
 vi.mock('@/lib/sesion');
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }));
 
@@ -13,6 +15,7 @@ describe('Página de jugar', () => {
   it('muestra el título, el lobby y el estado del servidor', async () => {
     vi.mocked(consultarSalud).mockReturnValue(new Promise(() => {}));
     vi.mocked(listarSalas).mockResolvedValue([]);
+    vi.mocked(yo).mockResolvedValue(null);
     vi.mocked(leerNombre).mockReturnValue('');
 
     render(<Pagina />);
