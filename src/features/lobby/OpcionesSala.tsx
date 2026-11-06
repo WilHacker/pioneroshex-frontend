@@ -5,6 +5,15 @@ import type { OpcionesDeSala } from '@/lib/esquemas';
 export type CambiosDeSala = OpcionesDeSala & { publica?: boolean };
 
 const PUNTOS = [8, 10, 12, 15] as const;
+/** Segundos por turno; 0 es sin límite. Los mismos valores que acepta el servidor. */
+const TIEMPOS = [
+  { segundos: 0, etiqueta: '∞', ayuda: 'Sin límite de tiempo' },
+  { segundos: 30, etiqueta: '30 s', ayuda: '30 segundos por turno' },
+  { segundos: 60, etiqueta: '1 min', ayuda: '1 minuto por turno' },
+  { segundos: 90, etiqueta: '1:30', ayuda: 'Un minuto y medio por turno' },
+  { segundos: 120, etiqueta: '2 min', ayuda: '2 minutos por turno' },
+  { segundos: 180, etiqueta: '3 min', ayuda: '3 minutos por turno' },
+] as const;
 const DESCARTE = [7, 9] as const;
 const PUNTOS_POR_DEFECTO = 10;
 const DESCARTE_POR_DEFECTO = 7;
@@ -110,6 +119,17 @@ export function OpcionesSala({ opciones, publica, jugadores, editable, onCambiar
         }))}
         editable={editable}
         onElegir={(robberHandLimit) => onCambiar({ robberHandLimit })}
+      />
+      <Grupo
+        titulo="Tiempo por turno"
+        valor={opciones.turnoSegundos ?? 0}
+        opciones={TIEMPOS.map((t) => ({
+          valor: t.segundos,
+          etiqueta: t.etiqueta,
+          ayuda: `${t.ayuda}: si se acaba, el juego juega por ti`,
+        }))}
+        editable={editable}
+        onElegir={(turnoSegundos) => onCambiar({ turnoSegundos })}
       />
       <Grupo
         titulo="Turnos"

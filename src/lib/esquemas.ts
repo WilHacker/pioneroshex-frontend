@@ -139,6 +139,8 @@ export const esquemaNotificacion = z.object({
   eventos: z.array(esquemaEvento),
   acciones: z.array(esquemaAccionDisponible),
   sitios: esquemaSitios,
+  /** Milisegundos que le quedan a quien debe actuar; `null` si la sala no tiene límite de tiempo. */
+  reloj: z.number().nullish(),
 });
 export type Notificacion = z.infer<typeof esquemaNotificacion>;
 
@@ -148,6 +150,7 @@ export const esquemaInicio = z.object({
   vista: esquemaVista,
   acciones: z.array(esquemaAccionDisponible),
   sitios: esquemaSitios,
+  reloj: z.number().nullish(),
 });
 export type Inicio = z.infer<typeof esquemaInicio>;
 
@@ -175,6 +178,7 @@ export const esquemaSalaPublica = z.object({
     turnRuleMode: z.enum(['A', 'B']).optional(),
     modoDados: z.enum(['AZAR', 'EQUILIBRADO']).optional(),
     robberHandLimit: z.number().optional(),
+    turnoSegundos: z.number().optional(),
   }),
 });
 export type SalaPublica = z.infer<typeof esquemaSalaPublica>;

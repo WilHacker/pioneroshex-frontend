@@ -27,6 +27,8 @@ export interface Juego {
   readonly tiradas: number;
   /** El número que acaba de salir, unos segundos; las casillas con ese número laten. */
   readonly resaltado: number | null;
+  /** Hora (de este navegador) en que se acaba el tiempo del turno, o `null` si no hay límite. */
+  readonly vence: number | null;
   /** Manda una acción. Devuelve `null` si se aceptó, o el motivo en español si no. */
   readonly enviar: (accion: object) => Promise<string | null>;
 }
@@ -40,6 +42,7 @@ export function useJuego(salaId: string, token: string): Juego {
   const [ultimos, setUltimos] = useState<Juego['ultimos']>({ numero: 0, eventos: [] });
   const [tiradas, setTiradas] = useState(0);
   const [resaltado, setResaltado] = useState<number | null>(null);
+  const [vence, setVence] = useState<number | null>(null);
   const actual = useRef<Conexion | null>(null);
   const apagarResaltado = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
@@ -49,6 +52,7 @@ export function useJuego(salaId: string, token: string): Juego {
       {
         alInicio: (inicio) => {
           setRechazo(null);
+          setVence(inicio.reloj ? Date.now() + inicio.reloj : null);
           setDatos({
             mesa: inicio.mesa,
             vista: inicio.vista,
@@ -57,6 +61,7 @@ export function useJuego(salaId: string, token: string): Juego {
           });
         },
         alNotificar: (n) => {
+          setVence(n.reloj ? Date.now() + n.reloj : null);
           setDatos((previo) =>
             previo ? { ...previo, vista: n.vista, acciones: n.acciones, sitios: n.sitios } : previo,
           );
@@ -88,5 +93,5 @@ export function useJuego(salaId: string, token: string): Juego {
     return respuesta.ok ? null : textoDeMotivo(respuesta.motivo);
   }, []);
 
-  return { conexion, rechazo, datos, eventos, ultimos, tiradas, resaltado, enviar };
+  return { conexion, rechazo, datos, eventos, ultimos, tiradas, resaltado, vence, enviar };
 }

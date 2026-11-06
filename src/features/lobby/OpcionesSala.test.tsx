@@ -60,4 +60,23 @@ describe('OpcionesSala', () => {
 
     for (const boton of screen.getAllByRole('button')) expect(boton).toBeDisabled();
   });
+
+  it('el tiempo por turno empieza sin límite y se puede elegir uno', async () => {
+    const onCambiar = vi.fn();
+    const usuario = userEvent.setup();
+    render(<OpcionesSala {...base} onCambiar={onCambiar} />);
+
+    expect(screen.getByRole('button', { name: '∞' })).toHaveAttribute('aria-pressed', 'true');
+    await usuario.click(screen.getByRole('button', { name: '1 min' }));
+    await usuario.click(screen.getByRole('button', { name: '30 s' }));
+
+    expect(onCambiar.mock.calls).toEqual([[{ turnoSegundos: 60 }], [{ turnoSegundos: 30 }]]);
+  });
+
+  it('muestra el tiempo ya elegido', () => {
+    render(<OpcionesSala {...base} opciones={{ turnoSegundos: 120 }} onCambiar={vi.fn()} />);
+
+    expect(screen.getByRole('button', { name: '2 min' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: '∞' })).toHaveAttribute('aria-pressed', 'false');
+  });
 });

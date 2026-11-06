@@ -35,7 +35,7 @@ const ELEMENTOS: readonly Elemento[] = [
 ];
 
 const BOTON =
-  'relative flex size-16 items-center justify-center rounded-2xl border-2 shadow-md transition enabled:hover:-translate-y-1 disabled:opacity-45';
+  'relative flex size-12 items-center justify-center rounded-2xl border-2 shadow-md sm:size-16 transition enabled:hover:-translate-y-1 disabled:opacity-45';
 
 function Costo({ pieza }: { pieza: TipoPieza }) {
   return (
@@ -80,7 +80,7 @@ export function Paleta({
   const terminar = accionDe('TERMINAR_TURNO');
 
   return (
-    <div className="flex items-end gap-2">
+    <div className="flex flex-wrap items-end gap-1.5 sm:gap-2">
       <button
         type="button"
         aria-label="Comerciar"
@@ -127,7 +127,7 @@ export function Paleta({
         );
       })}
 
-      <div className="ml-2 flex items-end gap-2">
+      <div className="ml-1 flex items-end gap-1.5 sm:ml-2 sm:gap-2">
         {accionDe('PASAR_CONSTRUCCION_ESPECIAL')?.disponible === true && (
           <button
             type="button"
@@ -148,7 +148,7 @@ export function Paleta({
               : textoDeMotivo(terminar?.motivo ?? 'NO_ES_TU_TURNO')
           }
           onClick={() => onAccion({ tipo: 'TERMINAR_TURNO' })}
-          className="flex size-16 items-center justify-center rounded-2xl bg-azafran text-tinta shadow-md transition enabled:hover:-translate-y-1 enabled:hover:bg-azafran-claro disabled:opacity-40"
+          className="flex size-12 items-center justify-center rounded-2xl bg-azafran text-tinta shadow-md transition enabled:hover:-translate-y-1 enabled:hover:bg-azafran-claro disabled:opacity-40 sm:size-16"
         >
           <IconoAccion tipo="ESPERA" tamano={32} />
         </button>

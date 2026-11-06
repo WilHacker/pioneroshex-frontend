@@ -30,6 +30,8 @@ import { Ofertas } from './Ofertas';
 import { PanelDescarte } from './PanelDescarte';
 import { Paleta } from './Paleta';
 import { Registro } from './Registro';
+import { Reloj } from './Reloj';
+import { TiraDeJugadores } from './TiraDeJugadores';
 import { Tablero } from './Tablero';
 import { useJuego } from './useJuego';
 
@@ -176,7 +178,7 @@ export function Partida({ credencial, nombres }: Props) {
 
   return (
     <div className="mar fixed inset-0 z-10 flex flex-col overflow-y-auto font-juego text-white lg:grid lg:grid-cols-[minmax(0,1fr)_24rem] lg:grid-rows-[minmax(0,1fr)_auto] lg:overflow-hidden">
-      <main className="relative flex min-h-[70vh] flex-col gap-2 p-3 lg:col-start-1 lg:row-start-1 lg:min-h-0">
+      <main className="relative flex min-h-[60vh] flex-col gap-2 p-3 lg:col-start-1 lg:row-start-1 lg:min-h-0">
         <header className="flex items-center justify-between gap-2">
           <div className="flex gap-2">
             <button
@@ -195,12 +197,16 @@ export function Partida({ credencial, nombres }: Props) {
           </div>
           <output
             aria-live="polite"
-            className={`rounded-full px-6 py-2 text-center text-lg font-extrabold shadow-lg ${miTurno ? 'bg-azafran text-tinta' : 'bg-black/35 text-white backdrop-blur'}`}
+            className={`rounded-full px-4 py-2 text-center text-base font-extrabold shadow-lg sm:px-6 sm:text-lg ${miTurno ? 'bg-azafran text-tinta' : 'bg-black/35 text-white backdrop-blur'}`}
           >
             {mensajeDeFase(vista, nombreDe)}
           </output>
-          <span className="w-[5.5rem]" aria-hidden="true" />
+          <span className="flex min-w-[5.5rem] justify-end">
+            <Reloj vence={juego.vence} />
+          </span>
         </header>
+
+        <TiraDeJugadores vista={vista} nombreDe={nombreDe} indiceDe={indiceDe} />
 
         {juego.conexion === 'reconectando' && (
           <output className="mx-auto rounded-full bg-coral px-4 py-1 text-sm font-bold">
@@ -242,7 +248,7 @@ export function Partida({ credencial, nombres }: Props) {
             />
           </div>
 
-          <div className="absolute right-1 bottom-1">
+          <div className="absolute right-1 bottom-1 origin-bottom-right scale-60 sm:scale-100">
             <Dados
               dados={vista.dados}
               tirada={juego.tiradas}
@@ -312,7 +318,7 @@ export function Partida({ credencial, nombres }: Props) {
         </div>
       </main>
 
-      <footer className="flex flex-wrap items-end justify-between gap-4 px-4 pt-4 pb-5 lg:col-start-1 lg:row-start-2">
+      <footer className="sticky bottom-0 z-20 flex flex-wrap items-end justify-between gap-x-4 gap-y-2 bg-mar-profundo/85 px-3 pt-2 pb-3 backdrop-blur sm:px-4 sm:pt-4 sm:pb-5 lg:static lg:col-start-1 lg:row-start-2 lg:bg-transparent lg:backdrop-blur-none">
         <div className="flex items-end gap-6">
           <ManoCartas recursos={miMano} />
           <CartasDesarrollo
@@ -353,7 +359,9 @@ export function Partida({ credencial, nombres }: Props) {
 
       <aside className="flex flex-col gap-3 overflow-y-auto p-3 lg:col-start-2 lg:row-span-2 lg:row-start-1">
         <Banco vista={vista} />
-        <Jugadores vista={vista} nombreDe={nombreDe} indiceDe={indiceDe} />
+        <div className="hidden lg:block">
+          <Jugadores vista={vista} nombreDe={nombreDe} indiceDe={indiceDe} />
+        </div>
         <Registro eventos={juego.eventos} nombreDe={nombreDe} indiceDe={indiceDe} />
       </aside>
     </div>

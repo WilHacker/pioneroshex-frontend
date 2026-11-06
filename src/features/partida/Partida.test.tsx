@@ -39,6 +39,7 @@ function juego({ vista, acciones, sitios, ...resto }: Opciones = {}): Juego {
     ultimos: { numero: 0, eventos: [] },
     tiradas: 0,
     resaltado: null,
+    vence: null,
     enviar,
     datos: {
       mesa: mesaDePrueba,
@@ -459,5 +460,19 @@ describe('Partida: sonido', () => {
     sonido.silenciado = true;
     mostrar(juego());
     expect(screen.getByRole('button', { name: 'Sonido apagado' })).toBeInTheDocument();
+  });
+});
+
+describe('Partida: reloj de turno', () => {
+  it('muestra la cuenta atrás cuando la sala tiene límite de tiempo', () => {
+    mostrar(juego({ vence: Date.now() + 45_000 }));
+
+    expect(screen.getByRole('timer', { name: 'Tiempo del turno' })).toHaveTextContent('0:45');
+  });
+
+  it('sin límite de tiempo no hay reloj', () => {
+    mostrar(juego({ vence: null }));
+
+    expect(screen.queryByRole('timer')).not.toBeInTheDocument();
   });
 });
