@@ -7,7 +7,7 @@ import {
 } from '@/components/arte/IconosEstado';
 import { IconoPieza } from '@/components/arte/IconoPieza';
 import type { JugadorVista, Vista } from '@/lib/esquemas';
-import { colorDeJugador } from './colores';
+import { colorDeJugador } from '@/lib/colores';
 
 type Props = {
   vista: Vista;

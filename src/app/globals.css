@@ -87,6 +87,25 @@ body {
   }
 }
 
+/* Un recurso aparece sobre la casilla que produce, sube y se desvanece. */
+@keyframes entregar {
+  0% {
+    opacity: 0;
+    transform: translateY(0.1px) scale(0.5);
+  }
+  25% {
+    opacity: 1;
+    transform: translateY(-0.15px) scale(1);
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-0.75px) scale(1);
+  }
+}
+
 /* El dado rueda hasta mostrar su cara: la orientación final llega por variables CSS. */
 @keyframes dado-gira {
   from {
@@ -119,6 +138,10 @@ body {
   animation: aparece 0.35s cubic-bezier(0.3, 1.5, 0.5, 1) 0.8s both;
 }
 
+.entrega {
+  animation: entregar 1.9s ease-out 0.9s both;
+}
+
 .sitio {
   animation: respirar 1.6s ease-in-out infinite;
 }
@@ -133,5 +156,10 @@ body {
   .dado3d-cubo,
   .suma-aparece {
     animation: none;
+  }
+
+  /* Sin movimiento, los recursos flotantes sobran: la suma y la casilla resaltada bastan. */
+  .entrega {
+    display: none;
   }
 }

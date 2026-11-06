@@ -9,7 +9,7 @@ import { sonidoDelJuego, type Efecto } from '@/lib/sonido';
 import { victimasEn } from '@/lib/tablero';
 import { Banco } from './Banco';
 import { CartasDesarrollo } from './CartasDesarrollo';
-import { colorDeJugador } from './colores';
+import { colorDeJugador } from '@/lib/colores';
 import { Comercio } from './Comercio';
 import { Dados } from './Dados';
 import { efectoDe } from './efectos';

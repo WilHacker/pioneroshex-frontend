@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { oscurecer } from '@/components/arte/IconoPieza';
 import type { Punto, Terreno } from '@/lib/esquemas';
 import { esquinasDeCasilla } from '@/lib/tablero';
-import { COLOR_TERRENO, NOMBRE_TERRENO, aclarar } from './colores';
+import { COLOR_TERRENO, NOMBRE_TERRENO, aclarar } from '@/lib/colores';
 
 const TERRENOS = Object.keys(COLOR_TERRENO) as Terreno[];
 

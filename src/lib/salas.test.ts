@@ -1,4 +1,13 @@
-import { crearSala, empezarSala, ErrorApi, unirseASala, verSala } from './salas';
+import {
+  cambiarSala,
+  crearSala,
+  empezarSala,
+  ErrorApi,
+  listarSalas,
+  unirseASala,
+  verResumen,
+  verSala,
+} from './salas';
 
 const credencial = { salaId: 'abcd1234', jugadorId: 'j1', token: 'secreto' };
 
@@ -85,6 +94,8 @@ describe('unirseASala y verSala', () => {
       empezada: false,
       anfitrion: 'j1',
       jugadores: [{ id: 'j1', nombre: 'Ana' }],
+      publica: false,
+      opciones: {},
     };
     responder(sala);
     await expect(verSala('abcd1234')).resolves.toEqual(sala);
@@ -109,5 +120,59 @@ describe('empezarSala', () => {
   it('propaga el rechazo (por ejemplo, faltan jugadores)', async () => {
     responder({ message: 'Hacen falta al menos 2 jugadores' }, 409);
     await expect(empezarSala('x', 't')).rejects.toMatchObject({ estado: 409 });
+  });
+});
+
+describe('verResumen', () => {
+  it('pide GET /salas/resumen y valida los tres números', async () => {
+    const resumen = { salasAbiertas: 2, partidasEnCurso: 1, jugadores: 5 };
+    responder(resumen);
+
+    await expect(verResumen()).resolves.toEqual(resumen);
+    expect(fetch).toHaveBeenCalledWith(
+      'http://localhost:3001/salas/resumen',
+      expect.objectContaining({ method: 'GET' }),
+    );
+  });
+
+  it('rechaza una respuesta con otra forma', async () => {
+    responder({ salasAbiertas: 'muchas' });
+
+    await expect(verResumen()).rejects.toMatchObject({ estado: 502 });
+  });
+});
+
+describe('salas públicas y opciones', () => {
+  it('crearSala manda publica solo cuando es pública', async () => {
+    responder(credencial, 201);
+    await crearSala('Ana', true);
+
+    expect(fetch).toHaveBeenCalledWith(
+      'http://localhost:3001/salas',
+      expect.objectContaining({ body: JSON.stringify({ nombre: 'Ana', publica: true }) }),
+    );
+  });
+
+  it('listarSalas valida cada fila', async () => {
+    const fila = { id: 'abcd1234', anfitrion: 'Ana', jugadores: 2, maximo: 10 };
+    responder([fila]);
+
+    await expect(listarSalas()).resolves.toEqual([fila]);
+    responder([{ id: 1 }]);
+    await expect(listarSalas()).rejects.toMatchObject({ estado: 502 });
+  });
+
+  it('cambiarSala hace PATCH con el token del anfitrión', async () => {
+    responder(undefined, 204);
+    await cambiarSala('abcd1234', 'secreto', { puntosVictoria: 12, publica: true });
+
+    expect(fetch).toHaveBeenCalledWith(
+      'http://localhost:3001/salas/abcd1234',
+      expect.objectContaining({
+        method: 'PATCH',
+        body: JSON.stringify({ puntosVictoria: 12, publica: true }),
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer secreto' },
+      }),
+    );
   });
 });

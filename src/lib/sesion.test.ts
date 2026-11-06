@@ -1,4 +1,11 @@
-import { guardarCredencial, leerCredencial, type Almacen } from './sesion';
+import {
+  enlaceDeSala,
+  guardarCredencial,
+  guardarNombre,
+  leerCredencial,
+  leerNombre,
+  type Almacen,
+} from './sesion';
 
 function almacenEnMemoria(
   inicial: Record<string, string> = {},
@@ -59,5 +66,42 @@ describe('sesión de sala', () => {
     sessionStorage.clear();
     guardarCredencial(ana);
     expect(leerCredencial('sala1111')).toEqual(ana);
+  });
+});
+
+describe('nombre del jugador', () => {
+  it('se recuerda entre visitas y, sin nada guardado, es vacío', () => {
+    const almacen = almacenEnMemoria();
+
+    expect(leerNombre(almacen)).toBe('');
+    guardarNombre('  Ana ', almacen);
+    expect(leerNombre(almacen)).toBe('Ana');
+  });
+
+  it('sin almacenamiento no falla', () => {
+    expect(() => guardarNombre('Ana', null)).not.toThrow();
+    expect(leerNombre(null)).toBe('');
+  });
+
+  it('si el almacenamiento lanza, se ignora', () => {
+    const roto: Almacen = {
+      getItem: () => {
+        throw new Error('bloqueado');
+      },
+      setItem: () => {
+        throw new Error('bloqueado');
+      },
+    };
+
+    expect(() => guardarNombre('Ana', roto)).not.toThrow();
+    expect(leerNombre(roto)).toBe('');
+  });
+});
+
+describe('enlaceDeSala', () => {
+  it('arma la dirección de invitación con el origen actual', () => {
+    expect(enlaceDeSala('http://192.168.1.20:3000', 'abcd1234')).toBe(
+      'http://192.168.1.20:3000/sala/abcd1234',
+    );
   });
 });

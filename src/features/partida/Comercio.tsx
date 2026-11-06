@@ -9,7 +9,7 @@ import {
 } from '@/lib/esquemas';
 import { NOMBRE_RECURSO } from '@/lib/mensajes';
 import { CartaRecurso } from './CartaRecurso';
-import { colorDeJugador } from './colores';
+import { colorDeJugador } from '@/lib/colores';
 
 type Props = {
   vista: Vista;

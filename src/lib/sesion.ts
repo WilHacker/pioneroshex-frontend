@@ -55,3 +55,39 @@ export function leerCredencial(
   const guardada = leerTodas(almacen)[salaId];
   return guardada ? { salaId, ...guardada } : null;
 }
+
+const CLAVE_NOMBRE = 'pioneroshex:nombre';
+
+function almacenPersistente(): Almacen | null {
+  try {
+    return typeof localStorage === 'undefined' ? null : localStorage;
+  } catch {
+    return null;
+  }
+}
+
+/** El nombre sí se recuerda entre visitas (`localStorage`): no es un secreto. */
+export function leerNombre(almacen: Almacen | null = almacenPersistente()): string {
+  if (!almacen) return '';
+  try {
+    return almacen.getItem(CLAVE_NOMBRE) ?? '';
+  } catch {
+    return '';
+  }
+}
+
+export function guardarNombre(
+  nombre: string,
+  almacen: Almacen | null = almacenPersistente(),
+): void {
+  if (!almacen) return;
+  try {
+    almacen.setItem(CLAVE_NOMBRE, nombre.trim());
+  } catch {
+    // Sin almacenamiento solo se pierde la comodidad de no volver a escribirlo.
+  }
+}
+
+/** La dirección que se le pasa a un amigo para que entre a la sala. */
+export const enlaceDeSala = (origen: string, salaId: string): string =>
+  `${origen}/sala/${encodeURIComponent(salaId)}`;

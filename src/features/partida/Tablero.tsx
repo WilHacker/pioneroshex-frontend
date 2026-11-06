@@ -9,7 +9,7 @@ import {
   viewBoxDe,
 } from '@/lib/tablero';
 import { Casilla, DefinicionesDeCasilla } from './Casilla';
-import { colorDeJugador } from './colores';
+import { colorDeJugador } from '@/lib/colores';
 import { Camino, Ciudad, Ladron, Poblado, Puerto } from './PiezasSVG';
 
 /** Qué se puede tocar ahora en el tablero. */
@@ -17,7 +17,8 @@ export type Objetivo = 'POBLADOS' | 'CIUDADES' | 'ARISTAS' | 'CASILLAS' | null;
 
 type Props = {
   mesa: Mesa;
-  vista: Vista;
+  /** Solo lo que el tablero dibuja: así también sirve para el tablero decorativo de la portada. */
+  vista: Pick<Vista, 'yo' | 'edificios' | 'caminos' | 'ladron'>;
   /** Posición de cada jugador en el orden de turno (para su color y su número). */
   indiceDe: (jugadorId: string) => number;
   nombreDe: (jugadorId: string) => string;
@@ -33,6 +34,8 @@ type Props = {
   onVertice: (id: string) => void;
   onArista: (id: string) => void;
   onCasilla: (hex: Hex) => void;
+  /** Dibujo extra encima de todo (p. ej. los recursos que reparte una tirada). */
+  capa?: ReactNode;
 };
 
 const SIN_ARISTAS: readonly string[] = [];
@@ -100,6 +103,7 @@ export function Tablero({
   onVertice,
   onArista,
   onCasilla,
+  capa = null,
 }: Props) {
   const posiciones = posicionesDeVertices(mesa);
   const miColor = colorDeJugador(vista.yo ? indiceDe(vista.yo) : 0);
@@ -291,6 +295,7 @@ export function Tablero({
           .map((c) => (
             <Ladron key="ladron" posicion={{ x: c.centro.x + 0.34, y: c.centro.y - 0.08 }} />
           ))}
+      {capa}
     </svg>
   );
 }

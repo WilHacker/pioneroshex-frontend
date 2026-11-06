@@ -169,5 +169,22 @@ export const esquemaSalaPublica = z.object({
   empezada: z.boolean(),
   anfitrion: z.string(),
   jugadores: z.array(z.object({ id: z.string(), nombre: z.string() })),
+  publica: z.boolean(),
+  opciones: z.object({
+    puntosVictoria: z.number().optional(),
+    turnRuleMode: z.enum(['A', 'B']).optional(),
+    modoDados: z.enum(['AZAR', 'EQUILIBRADO']).optional(),
+    robberHandLimit: z.number().optional(),
+  }),
 });
 export type SalaPublica = z.infer<typeof esquemaSalaPublica>;
+export type OpcionesDeSala = SalaPublica['opciones'];
+
+/** Una fila de la lista de salas abiertas. */
+export const esquemaSalaAbierta = z.object({
+  id: z.string(),
+  anfitrion: z.string(),
+  jugadores: z.number(),
+  maximo: z.number(),
+});
+export type SalaAbierta = z.infer<typeof esquemaSalaAbierta>;

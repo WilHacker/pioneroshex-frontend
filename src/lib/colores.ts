@@ -1,4 +1,4 @@
-import type { Terreno } from '@/lib/esquemas';
+import type { Terreno } from './esquemas';
 
 /** Color base de cada terreno (propio). El tablero le saca un degradado y un borde. */
 export const COLOR_TERRENO: Record<Terreno, string> = {

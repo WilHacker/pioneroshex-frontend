@@ -1,0 +1,123 @@
+import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { crearSala, listarSalas, unirseASala } from '@/lib/salas';
+import { guardarCredencial, guardarNombre, leerNombre } from '@/lib/sesion';
+import { Lobby } from './Lobby';
+
+const push = vi.fn();
+vi.mock('next/navigation', () => ({ useRouter: () => ({ push }) }));
+vi.mock('@/lib/salas');
+vi.mock('@/lib/sesion');
+
+const credencial = { salaId: 'abcd1234', jugadorId: 'j1', token: 'secreto' };
+const fila = { id: 'abcd1234', anfitrion: 'Beto', jugadores: 2, maximo: 10 };
+
+beforeEach(() => {
+  vi.resetAllMocks();
+  vi.mocked(leerNombre).mockReturnValue('');
+  vi.mocked(listarSalas).mockResolvedValue([fila]);
+});
+
+describe('Lobby', () => {
+  it('muestra las salas abiertas, pero sin nombre no deja entrar', async () => {
+    render(<Lobby />);
+
+    expect(await screen.findByText('Beto')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Entrar' })).toBeDisabled();
+  });
+
+  it('recuerda el nombre de otras visitas', async () => {
+    vi.mocked(leerNombre).mockReturnValue('Ana');
+    render(<Lobby />);
+
+    expect(await screen.findByLabelText('Tu nombre')).toHaveValue('Ana');
+    expect(screen.getByRole('button', { name: 'Entrar' })).toBeEnabled();
+  });
+
+  it('entrar a una sala abierta guarda el nombre y la credencial y va a la sala', async () => {
+    vi.mocked(unirseASala).mockResolvedValue({ ...credencial, jugadorId: 'j3' });
+    const usuario = userEvent.setup();
+    render(<Lobby />);
+
+    await usuario.type(screen.getByLabelText('Tu nombre'), '  Ana ');
+    await usuario.click(await screen.findByRole('button', { name: 'Entrar' }));
+
+    expect(unirseASala).toHaveBeenCalledWith('abcd1234', 'Ana');
+    expect(guardarNombre).toHaveBeenCalledWith('  Ana ');
+    expect(guardarCredencial).toHaveBeenCalledWith({ ...credencial, jugadorId: 'j3' });
+    expect(push).toHaveBeenCalledWith('/sala/abcd1234');
+  });
+
+  it('una sala llena no se puede elegir', async () => {
+    vi.mocked(leerNombre).mockReturnValue('Ana');
+    vi.mocked(listarSalas).mockResolvedValue([{ ...fila, jugadores: 10 }]);
+    render(<Lobby />);
+
+    expect(await screen.findByRole('button', { name: 'Entrar' })).toBeDisabled();
+  });
+
+  it('sin salas abiertas lo dice, y si no carga la lista también', async () => {
+    vi.mocked(listarSalas).mockResolvedValueOnce([]);
+    const { unmount } = render(<Lobby />);
+    expect(await screen.findByText('No hay salas abiertas')).toBeInTheDocument();
+    unmount();
+
+    vi.mocked(listarSalas).mockRejectedValue(new Error('sin red'));
+    render(<Lobby />);
+    expect(await screen.findByText('No se pudo cargar la lista')).toBeInTheDocument();
+  });
+
+  it('crear una sala pública manda la visibilidad y entra a ella', async () => {
+    vi.mocked(leerNombre).mockReturnValue('Ana');
+    vi.mocked(crearSala).mockResolvedValue(credencial);
+    const usuario = userEvent.setup();
+    render(<Lobby />);
+
+    await usuario.click(screen.getByRole('tab', { name: 'Crear' }));
+    await usuario.click(screen.getByRole('button', { name: 'Pública' }));
+    await usuario.click(screen.getByRole('button', { name: 'Crear sala' }));
+
+    expect(crearSala).toHaveBeenCalledWith('Ana', true);
+    expect(push).toHaveBeenCalledWith('/sala/abcd1234');
+  });
+
+  it('por defecto la sala que se crea es privada', async () => {
+    vi.mocked(leerNombre).mockReturnValue('Ana');
+    vi.mocked(crearSala).mockResolvedValue(credencial);
+    const usuario = userEvent.setup();
+    render(<Lobby />);
+
+    await usuario.click(screen.getByRole('tab', { name: 'Crear' }));
+    await usuario.click(screen.getByRole('button', { name: 'Crear sala' }));
+
+    expect(crearSala).toHaveBeenCalledWith('Ana', false);
+  });
+
+  it('con un código, lo normaliza para unirse', async () => {
+    vi.mocked(leerNombre).mockReturnValue('Ana');
+    vi.mocked(unirseASala).mockResolvedValue({ ...credencial, jugadorId: 'j2' });
+    const usuario = userEvent.setup();
+    render(<Lobby />);
+
+    await usuario.click(screen.getByRole('tab', { name: 'Tengo un código' }));
+    expect(screen.getByRole('button', { name: 'Unirme' })).toBeDisabled();
+    await usuario.type(screen.getByLabelText('Código de la sala'), '  ABCD1234 ');
+    await usuario.click(screen.getByRole('button', { name: 'Unirme' }));
+
+    expect(unirseASala).toHaveBeenCalledWith('abcd1234', 'Ana');
+    expect(push).toHaveBeenCalledWith('/sala/abcd1234');
+  });
+
+  it('si el servidor rechaza, muestra el motivo y deja volver a intentar', async () => {
+    vi.mocked(leerNombre).mockReturnValue('Ana');
+    vi.mocked(unirseASala).mockRejectedValue(new Error('La sala está llena'));
+    const usuario = userEvent.setup();
+    render(<Lobby />);
+
+    await usuario.click(await screen.findByRole('button', { name: 'Entrar' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('La sala está llena');
+    expect(screen.getByRole('button', { name: 'Entrar' })).toBeEnabled();
+    expect(push).not.toHaveBeenCalled();
+  });
+});

@@ -1,11 +1,17 @@
 import { render, screen } from '@testing-library/react';
-import Portada from './page';
+import { verResumen } from '@/lib/salas';
+import PaginaInicio from './page';
 
-describe('Portada', () => {
-  it('muestra el título y un enlace para entrar a jugar', () => {
-    render(<Portada />);
+vi.mock('@/lib/salas');
 
-    expect(screen.getByRole('heading', { name: 'PionerosHex' })).toBeInTheDocument();
+describe('Página de inicio', () => {
+  it('junta la portada con el tablero de demostración', () => {
+    vi.mocked(verResumen).mockReturnValue(new Promise(() => {}));
+
+    render(<PaginaInicio />);
+
     expect(screen.getByRole('link', { name: 'Jugar ahora' })).toHaveAttribute('href', '/jugar');
+    expect(screen.getByLabelText('Tablero de juego')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Tirar los dados' })).toBeInTheDocument();
   });
 });

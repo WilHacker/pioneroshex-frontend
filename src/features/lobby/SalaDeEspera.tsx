@@ -1,12 +1,19 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useState, type SyntheticEvent } from 'react';
+import { IconoPersona } from '@/components/arte/IconosPortada';
+import { aclarar, colorDeJugador } from '@/lib/colores';
 import type { Credencial, SalaPublica } from '@/lib/esquemas';
-import { empezarSala, unirseASala, verSala } from '@/lib/salas';
-import { guardarCredencial, leerCredencial } from '@/lib/sesion';
+import { cambiarSala, empezarSala, unirseASala, verSala } from '@/lib/salas';
+import { enlaceDeSala, guardarCredencial, guardarNombre, leerCredencial } from '@/lib/sesion';
+import { OpcionesSala, type CambiosDeSala } from './OpcionesSala';
 
 const CADA_MS = 2000;
 const MINIMO_JUGADORES = 2;
+const JUGADORES_MAX = 10;
+const ASIENTOS_VISIBLES_MIN = 4;
+const AVISO_COPIADO_MS = 1800;
 
 /** Lo que necesita la pantalla de juego para arrancar. */
 export interface EntradaPartida {
@@ -21,6 +28,67 @@ type Props = {
 };
 
 const mensajeDe = (e: unknown): string => (e instanceof Error ? e.message : 'Algo salió mal');
+
+const BOTON_PRINCIPAL =
+  'rounded-full bg-azafran px-8 py-3 text-xl font-extrabold text-tinta shadow-lg ring-4 ring-azafran-claro/50 transition enabled:hover:scale-105 enabled:hover:bg-azafran-claro disabled:opacity-50 disabled:ring-0';
+
+function Asiento({ nombre, indice, yo }: { nombre: string; indice: number; yo: boolean }) {
+  const color = colorDeJugador(indice);
+  return (
+    <li className="flex flex-col items-center gap-1" title={nombre}>
+      <span
+        aria-hidden="true"
+        style={{ background: `linear-gradient(145deg, ${aclarar(color, 0.25)}, ${color})` }}
+        className={`flex size-14 items-center justify-center rounded-full text-2xl font-extrabold text-white shadow-md ring-4 ${yo ? 'ring-azafran' : 'ring-white/70'}`}
+      >
+        {nombre.charAt(0).toUpperCase()}
+      </span>
+      <span className="max-w-20 truncate text-sm font-bold">{nombre}</span>
+    </li>
+  );
+}
+
+function AsientoVacio() {
+  return (
+    <li className="flex flex-col items-center gap-1 text-tinta/30" aria-hidden="true">
+      <span className="flex size-14 items-center justify-center rounded-full border-2 border-dashed border-current">
+        <IconoPersona tamano={24} />
+      </span>
+      <span className="text-sm">&nbsp;</span>
+    </li>
+  );
+}
+
+/** El código en grande y un botón que copia el enlace de invitación. */
+function Invitar({ salaId }: { salaId: string }) {
+  const [copiado, setCopiado] = useState(false);
+
+  async function copiar(): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(enlaceDeSala(window.location.origin, salaId));
+      setCopiado(true);
+      setTimeout(() => setCopiado(false), AVISO_COPIADO_MS);
+    } catch {
+      // Sin permiso para el portapapeles, el código a la vista sigue sirviendo.
+    }
+  }
+
+  return (
+    <div className="flex items-center justify-center gap-3">
+      <span className="rounded-xl bg-tinta px-4 py-2 font-mono text-2xl font-extrabold tracking-widest text-espuma">
+        {salaId}
+      </span>
+      <button
+        type="button"
+        onClick={() => void copiar()}
+        title="Copiar el enlace de invitación"
+        className="bg-laguna hover:bg-laguna/85 rounded-full px-4 py-2 font-extrabold text-white transition"
+      >
+        {copiado ? '¡Copiado!' : 'Copiar enlace'}
+      </button>
+    </div>
+  );
+}
 
 export function SalaDeEspera({ salaId, onEmpezada }: Props) {
   // Antes de cargar la sala se muestra siempre "Cargando", así que leer el almacenamiento aquí no
@@ -63,6 +131,7 @@ export function SalaDeEspera({ salaId, onEmpezada }: Props) {
     setOcupado(true);
     try {
       const nueva = await unirseASala(salaId, nombre.trim());
+      guardarNombre(nombre);
       guardarCredencial(nueva);
       setCredencial(nueva);
       setError(null);
@@ -86,81 +155,140 @@ export function SalaDeEspera({ salaId, onEmpezada }: Props) {
     }
   }
 
+  /** Se ve el cambio al instante y, si el servidor lo rechaza, se vuelve a lo que dice el servidor. */
+  async function cambiar(cambios: CambiosDeSala): Promise<void> {
+    if (!credencial || !sala) return;
+    const { publica, ...reglas } = cambios;
+    setSala({
+      ...sala,
+      publica: publica ?? sala.publica,
+      opciones: { ...sala.opciones, ...reglas },
+    });
+    try {
+      await cambiarSala(salaId, credencial.token, cambios);
+      setError(null);
+    } catch (e: unknown) {
+      setError(mensajeDe(e));
+      setSala(sala);
+    }
+  }
+
   const aviso = error && (
-    <p role="alert" className="rounded border border-red-500 px-3 py-2 text-sm text-red-600">
+    <p role="alert" className="rounded-xl bg-coral/15 px-3 py-2 text-sm font-bold text-coral">
       {error}
     </p>
   );
 
   if (!sala) {
     return (
-      <div className="flex flex-col gap-3">
-        <output className="text-sm">Cargando la sala…</output>
+      <div className="mar flex flex-1 flex-col items-center justify-center gap-3 p-4 text-white">
+        <output className="text-lg font-bold">Cargando la sala…</output>
         {aviso}
+        {error && (
+          <Link href="/jugar" className="font-bold underline">
+            Volver
+          </Link>
+        )}
       </div>
     );
   }
 
   const soyAnfitrion = credencial?.jugadorId === sala.anfitrion;
   const sePuedeEmpezar = sala.jugadores.length >= MINIMO_JUGADORES;
+  const asientosVacios =
+    Math.max(ASIENTOS_VISIBLES_MIN, sala.jugadores.length) - sala.jugadores.length;
 
   return (
-    <section aria-labelledby="titulo-sala" className="flex w-full max-w-md flex-col gap-4">
-      <h1 id="titulo-sala" className="text-2xl font-bold">
-        Sala <span className="font-mono">{sala.id}</span>
-      </h1>
-      <p className="text-sm text-zinc-500">Pásales este código a tus amigos para que entren.</p>
+    <div className="mar flex flex-1 flex-col items-center gap-4 p-4 text-white">
+      <header className="flex w-full max-w-2xl items-center justify-between py-2">
+        <Link href="/" className="text-2xl font-extrabold tracking-tight">
+          PionerosHex
+        </Link>
+        <Link href="/jugar" className="font-bold text-white/80 underline">
+          Salir
+        </Link>
+      </header>
 
-      <ul className="flex flex-col gap-1">
-        {sala.jugadores.map((j) => (
-          <li key={j.id} className="rounded bg-zinc-100 px-3 py-1.5 text-zinc-900">
-            {j.nombre}
-            {j.id === sala.anfitrion ? ' (anfitrión)' : ''}
-            {j.id === credencial?.jugadorId ? ' · tú' : ''}
-          </li>
-        ))}
-      </ul>
+      <section
+        aria-labelledby="titulo-sala"
+        className="flex w-full max-w-2xl flex-col gap-5 rounded-3xl bg-niebla p-5 text-tinta shadow-2xl"
+      >
+        <h1 id="titulo-sala" className="sr-only">
+          Sala {sala.id}
+        </h1>
+        <Invitar salaId={sala.id} />
 
-      {!credencial && !sala.empezada && (
-        <form onSubmit={(e) => void unirme(e)} className="flex flex-col gap-2">
-          <label className="flex flex-col gap-1 text-sm font-medium">
-            Tu nombre
-            <input
-              value={nombre}
-              onChange={(e) => setNombre(e.target.value)}
-              maxLength={20}
-              className="rounded border bg-transparent px-3 py-2"
-            />
-          </label>
-          <button
-            type="submit"
-            disabled={ocupado || nombre.trim() === ''}
-            className="rounded border px-3 py-2 font-medium enabled:hover:bg-zinc-100 enabled:hover:text-zinc-900 disabled:opacity-40"
-          >
-            Unirme a esta sala
-          </button>
-        </form>
-      )}
-
-      {credencial && soyAnfitrion && !sala.empezada && (
-        <button
-          type="button"
-          disabled={ocupado || !sePuedeEmpezar}
-          onClick={() => void empezar()}
-          className="rounded bg-zinc-900 px-3 py-2 font-medium text-white enabled:hover:bg-zinc-700 disabled:opacity-40 dark:bg-zinc-100 dark:text-zinc-900"
+        <ul
+          aria-label={`Jugadores (${sala.jugadores.length} de ${JUGADORES_MAX})`}
+          className="flex flex-wrap justify-center gap-4"
         >
-          {sePuedeEmpezar ? 'Empezar la partida' : `Faltan jugadores (mínimo ${MINIMO_JUGADORES})`}
-        </button>
-      )}
-      {credencial && !soyAnfitrion && !sala.empezada && (
-        <output className="text-sm">Esperando a que el anfitrión empiece la partida…</output>
-      )}
-      {!credencial && sala.empezada && (
-        <p role="alert" className="rounded border border-red-500 px-3 py-2 text-sm text-red-600">
-          La partida ya empezó y no estás en ella.
-        </p>
-      )}
-      {aviso}
-    </section>
+          {sala.jugadores.map((j, i) => (
+            <Asiento
+              key={j.id}
+              nombre={j.id === sala.anfitrion ? `${j.nombre} ★` : j.nombre}
+              indice={i}
+              yo={j.id === credencial?.jugadorId}
+            />
+          ))}
+          {Array.from({ length: asientosVacios }, (_, i) => (
+            <AsientoVacio key={`vacio-${i}`} />
+          ))}
+        </ul>
+
+        <OpcionesSala
+          opciones={sala.opciones}
+          publica={sala.publica}
+          jugadores={sala.jugadores.length}
+          editable={soyAnfitrion && !sala.empezada}
+          onCambiar={(c) => void cambiar(c)}
+        />
+
+        {!credencial && !sala.empezada && (
+          <form onSubmit={(e) => void unirme(e)} className="flex flex-wrap items-end gap-3">
+            <label className="flex min-w-40 flex-1 flex-col gap-1 text-sm font-bold">
+              Tu nombre
+              <input
+                value={nombre}
+                onChange={(e) => setNombre(e.target.value)}
+                maxLength={20}
+                autoComplete="name"
+                className="rounded-xl border-2 border-tinta/20 bg-white px-3 py-2 text-lg"
+              />
+            </label>
+            <button
+              type="submit"
+              disabled={ocupado || nombre.trim() === ''}
+              className={BOTON_PRINCIPAL}
+            >
+              Unirme a esta sala
+            </button>
+          </form>
+        )}
+
+        {credencial && soyAnfitrion && !sala.empezada && (
+          <button
+            type="button"
+            disabled={ocupado || !sePuedeEmpezar}
+            onClick={() => void empezar()}
+            className={`${BOTON_PRINCIPAL} self-center`}
+          >
+            {sePuedeEmpezar
+              ? 'Empezar la partida'
+              : `Faltan jugadores (mínimo ${MINIMO_JUGADORES})`}
+          </button>
+        )}
+        {credencial && !soyAnfitrion && !sala.empezada && (
+          <output className="text-center font-bold">
+            Esperando a que el anfitrión empiece la partida…
+          </output>
+        )}
+        {!credencial && sala.empezada && (
+          <p role="alert" className="rounded-xl bg-coral/15 px-3 py-2 text-sm font-bold text-coral">
+            La partida ya empezó y no estás en ella.
+          </p>
+        )}
+        {aviso}
+      </section>
+    </div>
   );
 }

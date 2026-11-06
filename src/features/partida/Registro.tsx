@@ -5,7 +5,7 @@ import { IconoRecurso } from '@/components/arte/IconoRecurso';
 import { IconoAccion, IconoDesarrollo } from '@/components/arte/IconosEstado';
 import { RECURSOS, esquemaRecurso, type EventoJuego } from '@/lib/esquemas';
 import { describirEvento } from '@/lib/mensajes';
-import { colorDeJugador } from './colores';
+import { colorDeJugador } from '@/lib/colores';
 
 type Props = {
   eventos: readonly EventoJuego[];
