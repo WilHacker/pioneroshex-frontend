@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import type { InfoDeMapa } from '@/lib/esquemas';
 import { aptitudDeMapa, contornoDeForma, type Aptitud } from '@/lib/mapas';
 
@@ -21,15 +22,30 @@ function claseDeCarta(elegida: boolean, deshabilitada: boolean): string {
   return `${CARTA} border-tinta/15 bg-white/60 ${deshabilitada ? 'opacity-60' : ''}`;
 }
 
-/** La forma del mapa sobre el mar, solo como dibujo: el nombre y los números van en texto. */
-function VistaPrevia({ forma }: { forma: InfoDeMapa['forma'] }) {
+/** La forma del mapa sobre el mar: imagen oficial con contorno SVG como base y respaldo. */
+function VistaPrevia({ id, forma }: { id: string; forma: InfoDeMapa['forma'] }) {
   const { poligonos, viewBox } = contornoDeForma(forma);
   return (
-    <svg viewBox={viewBox} aria-hidden="true" className="mar h-20 w-full rounded-xl">
-      {poligonos.map((puntos) => (
-        <polygon key={puntos} points={puntos} fill="#cfe3a3" stroke="#6e9a52" strokeWidth="0.08" />
-      ))}
-    </svg>
+    <div className="relative h-20 w-full overflow-hidden rounded-xl bg-mar-profundo/20">
+      <svg viewBox={viewBox} aria-hidden="true" className="mar h-full w-full">
+        {poligonos.map((puntos) => (
+          <polygon
+            key={puntos}
+            points={puntos}
+            fill="#cfe3a3"
+            stroke="#6e9a52"
+            strokeWidth="0.08"
+          />
+        ))}
+      </svg>
+      <Image
+        src={`/mapas/${id}.png`}
+        alt=""
+        fill
+        sizes="144px"
+        className="object-contain p-1 drop-shadow"
+      />
+    </div>
   );
 }
 
@@ -82,7 +98,7 @@ export function SelectorDeMapa({ mapas, elegido, jugadores, editable, onElegir }
               onClick={() => onElegir(m.id)}
               className={claseDeCarta(elegido === m.id, !editable || noCabe)}
             >
-              <VistaPrevia forma={m.forma} />
+              <VistaPrevia id={m.id} forma={m.forma} />
               <span className="font-extrabold">{m.nombre}</span>
               <span className="text-xs text-tinta/70">
                 {m.casillas} casillas · {m.minimoRecomendado}–{m.maximoRecomendado} jugadores

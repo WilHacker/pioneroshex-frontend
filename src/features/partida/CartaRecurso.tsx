@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import { COLOR_RECURSO, IconoRecurso } from '@/components/arte/IconoRecurso';
 import type { Recurso } from '@/lib/esquemas';
 import { NOMBRE_RECURSO } from '@/lib/mensajes';
@@ -21,6 +22,14 @@ type Props = {
 const TAMANOS = {
   normal: { caja: 'h-[4.6rem] w-[3.3rem]', icono: 34 },
   pequena: { caja: 'h-[3.1rem] w-[2.3rem]', icono: 24 },
+};
+
+const ARCHIVOS_RECURSO: Record<Recurso, string> = {
+  MADERA: '/cartas/madera.svg',
+  LADRILLO: '/cartas/ladrillo.svg',
+  OVEJA: '/cartas/oveja.svg',
+  TRIGO: '/cartas/trigo.svg',
+  MINERAL: '/cartas/mineral.svg',
 };
 
 /** Una carta de recurso: se usa en la mano, en el comercio y en el descarte. */
@@ -47,8 +56,18 @@ export function CartaRecurso({
   const contenido = (
     <>
       <IconoRecurso recurso={recurso} tamano={icono} />
+      <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-[10px]">
+        <Image
+          src={ARCHIVOS_RECURSO[recurso]}
+          alt=""
+          fill
+          unoptimized
+          sizes="52px"
+          className="object-cover"
+        />
+      </div>
       {cantidad !== undefined && (
-        <span className="absolute -top-2 -right-2 flex min-w-6 items-center justify-center rounded-full bg-tinta px-1 text-xs font-extrabold text-white ring-2 ring-white">
+        <span className="absolute -top-2 -right-2 z-10 flex min-w-6 items-center justify-center rounded-full bg-tinta px-1 text-xs font-extrabold text-white shadow ring-2 ring-white">
           {cantidad}
         </span>
       )}

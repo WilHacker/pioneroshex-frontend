@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useState, type ReactNode } from 'react';
 import { IconoAmigos, IconoCuenta, IconoPersona, IconoSala } from '@/components/arte/IconosPortada';
@@ -100,7 +101,16 @@ export function Portada({ tablero }: Props) {
   return (
     <div className="mar flex flex-1 flex-col items-center gap-8 px-4 pb-12 text-white">
       <header className="flex w-full max-w-5xl items-center justify-between py-4">
-        <p className="text-2xl font-extrabold tracking-tight">PionerosHex</p>
+        <div className="flex items-center gap-2.5">
+          <Image
+            src="/ui/logo-cuadrado.png"
+            alt=""
+            width={32}
+            height={32}
+            className="rounded-lg shadow"
+          />
+          <p className="text-2xl font-extrabold tracking-tight">PionerosHex</p>
+        </div>
         <nav aria-label="Cuenta" className="flex gap-2">
           {usuario ? (
             <Link

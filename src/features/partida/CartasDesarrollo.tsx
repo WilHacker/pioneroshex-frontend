@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import { useState } from 'react';
 import { IconoDesarrollo, NOMBRE_DESARROLLO } from '@/components/arte/IconosEstado';
 import { RECURSOS, type Carta, type Recurso, type Vista } from '@/lib/esquemas';
@@ -27,6 +28,14 @@ const FONDO: Record<Carta, string> = {
   ABUNDANCIA: '#d9c6f0',
   MONOPOLIO: '#f6dc9a',
   PUNTO_VICTORIA: '#fbe9a8',
+};
+
+const ARCHIVOS_DESARROLLO: Record<Carta, string> = {
+  CABALLERO: '/cartas/caballero.svg',
+  CONSTRUCCION_CARRETERAS: '/cartas/carreteras.svg',
+  ABUNDANCIA: '/cartas/abundancia.svg',
+  MONOPOLIO: '/cartas/monopolio.svg',
+  PUNTO_VICTORIA: '/cartas/punto-victoria.svg',
 };
 
 /** Cuántos recursos hay que elegir al jugar la carta, o `null` si se juega sobre el tablero. */
@@ -115,7 +124,17 @@ export function CartasDesarrollo({ vista, puedeJugar, onModo, onAccion }: Props)
           const contenido = (
             <>
               <IconoDesarrollo carta={carta} tamano={34} />
-              <span className="absolute -top-2 -right-2 flex min-w-6 items-center justify-center rounded-full bg-tinta px-1 text-xs font-extrabold text-white ring-2 ring-white">
+              <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-[10px]">
+                <Image
+                  src={ARCHIVOS_DESARROLLO[carta]}
+                  alt=""
+                  fill
+                  unoptimized
+                  sizes="52px"
+                  className="object-cover"
+                />
+              </div>
+              <span className="absolute -top-2 -right-2 z-10 flex min-w-6 items-center justify-center rounded-full bg-tinta px-1 text-xs font-extrabold text-white shadow ring-2 ring-white">
                 {cuenta(carta)}
               </span>
             </>

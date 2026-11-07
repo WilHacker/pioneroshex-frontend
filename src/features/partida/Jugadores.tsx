@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import type { ReactNode } from 'react';
 import {
   IconoCaballero,
@@ -75,12 +76,34 @@ function Estadisticas({ jugador, vista }: { jugador: JugadorVista; vista: Vista 
         titulo="caballeros jugados"
       />
       {vista.granEjercito === jugador.id && (
-        <span title="Gran ejército" className="rounded-full bg-azafran px-1.5">
+        <span
+          title="Gran ejército"
+          className="flex items-center gap-1 rounded-full bg-azafran px-2 py-0.5"
+        >
+          <Image
+            src="/insignias/gran-ejercito.svg"
+            alt=""
+            width={18}
+            height={18}
+            unoptimized
+            className="object-contain"
+          />
           <IconoCaballero tamano={18} etiqueta="Gran ejército" />
         </span>
       )}
       {vista.granRuta === jugador.id && (
-        <span title="Gran ruta" className="rounded-full bg-azafran px-1.5">
+        <span
+          title="Gran ruta"
+          className="flex items-center gap-1 rounded-full bg-azafran px-2 py-0.5"
+        >
+          <Image
+            src="/insignias/gran-ruta.svg"
+            alt=""
+            width={18}
+            height={18}
+            unoptimized
+            className="object-contain"
+          />
           <IconoRuta tamano={18} etiqueta="Gran ruta" />
         </span>
       )}

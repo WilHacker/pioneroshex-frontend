@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import { IconoCartaMano, IconoEstrella } from '@/components/arte/IconosEstado';
 import { colorDeJugador } from '@/lib/colores';
 import type { Vista } from '@/lib/esquemas';
@@ -53,6 +54,38 @@ export function TiraDeJugadores({ vista, nombreDe, indiceDe }: Props) {
               {j.totalCartas}
               <span className="sr-only"> cartas</span>
             </span>
+            {vista.granEjercito === j.id && (
+              <span
+                title="Gran ejército"
+                className="flex items-center rounded-full bg-azafran px-1 py-0.5"
+              >
+                <Image
+                  src="/insignias/gran-ejercito.svg"
+                  alt=""
+                  width={14}
+                  height={14}
+                  unoptimized
+                  className="object-contain"
+                />
+                <span className="sr-only">Gran ejército</span>
+              </span>
+            )}
+            {vista.granRuta === j.id && (
+              <span
+                title="Gran ruta"
+                className="flex items-center rounded-full bg-azafran px-1 py-0.5"
+              >
+                <Image
+                  src="/insignias/gran-ruta.svg"
+                  alt=""
+                  width={14}
+                  height={14}
+                  unoptimized
+                  className="object-contain"
+                />
+                <span className="sr-only">Gran ruta</span>
+              </span>
+            )}
           </li>
         );
       })}
