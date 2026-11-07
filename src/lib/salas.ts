@@ -1,9 +1,11 @@
 import { z } from 'zod';
 import {
   esquemaCredencial,
+  esquemaInfoDeMapa,
   esquemaSalaAbierta,
   esquemaSalaPublica,
   type Credencial,
+  type InfoDeMapa,
   type OpcionesDeSala,
   type SalaAbierta,
   type SalaPublica,
@@ -21,6 +23,11 @@ export async function crearSala(nombre: string, publica = false): Promise<Creden
   // `publica` solo viaja cuando es true: el servidor la toma como falsa por defecto.
   const cuerpo = publica ? { nombre, publica } : { nombre };
   return (await llamar('/salas', { metodo: 'POST', cuerpo }, esquemaCredencial))!;
+}
+
+/** El catálogo de mapas con su forma y sus rangos de jugadores. */
+export async function listarMapas(signal?: AbortSignal): Promise<InfoDeMapa[]> {
+  return (await llamar('/mapas', { metodo: 'GET', signal }, z.array(esquemaInfoDeMapa)))!;
 }
 
 /** Las salas públicas que esperan jugadores. */

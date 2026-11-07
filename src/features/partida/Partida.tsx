@@ -233,6 +233,7 @@ export function Partida({ credencial, nombres }: Props) {
             previa={previa}
             aristasElegidas={carreteras}
             numeroResaltado={juego.resaltado}
+            zoom
             onVertice={(id) => tocarSitio(id, accionDeVertice(vista, modo, id))}
             onArista={alArista}
             onCasilla={alCasilla}

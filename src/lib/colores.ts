@@ -30,6 +30,8 @@ const COLORES_JUGADOR = [
   '#6f9a1c',
   '#5b6678',
   '#b8541c',
+  '#9a7d0a',
+  '#7a2e4d',
 ];
 
 /** Color de un jugador según su lugar en el orden. Siempre va acompañado de su nombre o número. */

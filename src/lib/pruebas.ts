@@ -1,4 +1,4 @@
-import type { Inicio, Mesa, Sitios, Vista } from './esquemas';
+import type { InfoDeMapa, Inicio, Mesa, Sitios, Vista } from './esquemas';
 
 // Datos de ejemplo con la forma real del backend, para los tests de lib/ y features/.
 
@@ -111,3 +111,51 @@ export function inicioDePrueba(cambios: Partial<Inicio> = {}): Inicio {
     ...cambios,
   };
 }
+
+/** Las casillas `[q, r]` de un hexágono de radio `radio`, como las manda `GET /mapas`. */
+export function formaHexagonal(radio: number): [number, number][] {
+  const forma: [number, number][] = [];
+  for (let q = -radio; q <= radio; q++) {
+    for (let r = Math.max(-radio, -q - radio); r <= Math.min(radio, -q + radio); r++) {
+      forma.push([q, r]);
+    }
+  }
+  return forma;
+}
+
+/** Tres mapas del catálogo, con la forma real de `GET /mapas`. */
+export const mapasDePrueba: InfoDeMapa[] = [
+  {
+    id: 'clasico',
+    nombre: 'Clásico',
+    descripcion: 'El hexágono de 19 casillas de siempre.',
+    casillas: 19,
+    vertices: 54,
+    maximoTecnico: 7,
+    maximoRecomendado: 4,
+    minimoRecomendado: 2,
+    forma: formaHexagonal(2),
+  },
+  {
+    id: 'grande',
+    nombre: 'Grande',
+    descripcion: 'Hexágono de 37 casillas.',
+    casillas: 37,
+    vertices: 96,
+    maximoTecnico: 12,
+    maximoRecomendado: 8,
+    minimoRecomendado: 4,
+    forma: formaHexagonal(3),
+  },
+  {
+    id: 'gigante',
+    nombre: 'Gigante',
+    descripcion: 'Hexágono de 61 casillas.',
+    casillas: 61,
+    vertices: 150,
+    maximoTecnico: 12,
+    maximoRecomendado: 12,
+    minimoRecomendado: 6,
+    forma: formaHexagonal(4),
+  },
+];

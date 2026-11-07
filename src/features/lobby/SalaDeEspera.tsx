@@ -5,14 +5,14 @@ import { useEffect, useState, type SyntheticEvent } from 'react';
 import { IconoPersona } from '@/components/arte/IconosPortada';
 import { useCuenta } from '@/components/useCuenta';
 import { aclarar, colorDeJugador } from '@/lib/colores';
-import type { Credencial, SalaPublica } from '@/lib/esquemas';
-import { cambiarSala, empezarSala, unirseASala, verSala } from '@/lib/salas';
+import type { Credencial, InfoDeMapa, SalaPublica } from '@/lib/esquemas';
+import { cambiarSala, empezarSala, listarMapas, unirseASala, verSala } from '@/lib/salas';
 import { enlaceDeSala, guardarCredencial, guardarNombre, leerCredencial } from '@/lib/sesion';
 import { OpcionesSala, type CambiosDeSala } from './OpcionesSala';
+import { SelectorDeMapa } from './SelectorDeMapa';
 
 const CADA_MS = 2000;
 const MINIMO_JUGADORES = 2;
-const JUGADORES_MAX = 10;
 const ASIENTOS_VISIBLES_MIN = 4;
 const AVISO_COPIADO_MS = 1800;
 
@@ -99,6 +99,8 @@ export function SalaDeEspera({ salaId, onEmpezada }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [escrito, setNombre] = useState('');
   const [ocupado, setOcupado] = useState(false);
+  const [mapas, setMapas] = useState<InfoDeMapa[]>([]);
+  const [mapasFallaron, setMapasFallaron] = useState(false);
   const { usuario } = useCuenta();
   // Con sesión iniciada el servidor ya usa el nombre de la cuenta: se manda ese para que coincida.
   const nombre = usuario?.nombre ?? escrito;
@@ -123,6 +125,15 @@ export function SalaDeEspera({ salaId, onEmpezada }: Props) {
       clearInterval(temporizador);
     };
   }, [salaId]);
+
+  // El catálogo no cambia mientras la sala espera: se pide una sola vez.
+  useEffect(() => {
+    const controlador = new AbortController();
+    listarMapas(controlador.signal).then(setMapas, () => {
+      if (!controlador.signal.aborted) setMapasFallaron(true);
+    });
+    return () => controlador.abort();
+  }, []);
 
   useEffect(() => {
     if (!sala?.empezada || !credencial) return;
@@ -223,7 +234,7 @@ export function SalaDeEspera({ salaId, onEmpezada }: Props) {
         <Invitar salaId={sala.id} />
 
         <ul
-          aria-label={`Jugadores (${sala.jugadores.length} de ${JUGADORES_MAX})`}
+          aria-label={`Jugadores (${sala.jugadores.length} de ${sala.maximo})`}
           className="flex flex-wrap justify-center gap-4"
         >
           {sala.jugadores.map((j, i) => (
@@ -238,6 +249,19 @@ export function SalaDeEspera({ salaId, onEmpezada }: Props) {
             <AsientoVacio key={`vacio-${i}`} />
           ))}
         </ul>
+
+        <SelectorDeMapa
+          mapas={mapas}
+          elegido={sala.opciones.mapa ?? null}
+          jugadores={sala.jugadores.length}
+          editable={soyAnfitrion && !sala.empezada}
+          onElegir={(mapa) => void cambiar({ mapa })}
+        />
+        {mapasFallaron && (
+          <p className="-mt-3 text-sm font-bold text-tinta/70">
+            No se pudo cargar la lista de mapas; se usará el automático.
+          </p>
+        )}
 
         <OpcionesSala
           opciones={sala.opciones}

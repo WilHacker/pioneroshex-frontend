@@ -3,6 +3,7 @@ import {
   crearSala,
   empezarSala,
   ErrorApi,
+  listarMapas,
   listarSalas,
   unirseASala,
   verResumen,
@@ -95,6 +96,7 @@ describe('unirseASala y verSala', () => {
       anfitrion: 'j1',
       jugadores: [{ id: 'j1', nombre: 'Ana' }],
       publica: false,
+      maximo: 12,
       opciones: {},
     };
     responder(sala);
@@ -173,6 +175,53 @@ describe('salas públicas y opciones', () => {
         body: JSON.stringify({ puntosVictoria: 12, publica: true }),
         headers: { 'Content-Type': 'application/json', Authorization: 'Bearer secreto' },
       }),
+    );
+  });
+});
+
+describe('listarMapas', () => {
+  const mapa = {
+    id: 'clasico',
+    nombre: 'Clásico',
+    descripcion: 'El hexágono de 19 casillas de siempre.',
+    casillas: 1,
+    vertices: 6,
+    maximoTecnico: 7,
+    maximoRecomendado: 4,
+    minimoRecomendado: 2,
+    forma: [[0, 0]],
+  };
+
+  it('pide GET /mapas y valida la forma de cada mapa', async () => {
+    responder([mapa]);
+    await expect(listarMapas()).resolves.toEqual([mapa]);
+    expect(fetch).toHaveBeenCalledWith(
+      'http://localhost:3001/mapas',
+      expect.objectContaining({ method: 'GET' }),
+    );
+  });
+
+  it('un mapa con la forma mal escrita es un error claro del servidor', async () => {
+    responder([{ ...mapa, forma: [[0, 'x']] }]);
+    await expect(listarMapas()).rejects.toMatchObject({ estado: 502 });
+  });
+
+  it('un formato que no es una lista también', async () => {
+    responder({ mapas: [mapa] });
+    await expect(listarMapas()).rejects.toMatchObject({ estado: 502 });
+  });
+
+  it('cambiarSala puede mandar el id de un mapa o null para el automático', async () => {
+    responder(undefined, 204);
+    await cambiarSala('abcd1234', 'secreto', { mapa: 'lagos' });
+    expect(fetch).toHaveBeenLastCalledWith(
+      'http://localhost:3001/salas/abcd1234',
+      expect.objectContaining({ method: 'PATCH', body: JSON.stringify({ mapa: 'lagos' }) }),
+    );
+    await cambiarSala('abcd1234', 'secreto', { mapa: null });
+    expect(fetch).toHaveBeenLastCalledWith(
+      'http://localhost:3001/salas/abcd1234',
+      expect.objectContaining({ body: JSON.stringify({ mapa: null }) }),
     );
   });
 });

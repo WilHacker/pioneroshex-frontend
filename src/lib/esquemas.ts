@@ -173,7 +173,11 @@ export const esquemaSalaPublica = z.object({
   anfitrion: z.string(),
   jugadores: z.array(z.object({ id: z.string(), nombre: z.string() })),
   publica: z.boolean(),
+  /** Jugadores que admite esta sala: el tope del juego o el del mapa elegido. Lo manda el servidor. */
+  maximo: z.number(),
   opciones: z.object({
+    /** El id de un mapa del catálogo; `null` o ausente es el mapa automático. */
+    mapa: z.string().nullable().optional(),
     puntosVictoria: z.number().optional(),
     turnRuleMode: z.enum(['A', 'B']).optional(),
     modoDados: z.enum(['AZAR', 'EQUILIBRADO']).optional(),
@@ -183,6 +187,21 @@ export const esquemaSalaPublica = z.object({
 });
 export type SalaPublica = z.infer<typeof esquemaSalaPublica>;
 export type OpcionesDeSala = SalaPublica['opciones'];
+
+/** Un mapa del catálogo: su tamaño, sus rangos de jugadores y su forma para la vista previa. */
+export const esquemaInfoDeMapa = z.object({
+  id: z.string(),
+  nombre: z.string(),
+  descripcion: z.string(),
+  casillas: z.number(),
+  vertices: z.number(),
+  maximoTecnico: z.number(),
+  maximoRecomendado: z.number(),
+  minimoRecomendado: z.number(),
+  /** Una pareja `[q, r]` por casilla. */
+  forma: z.array(z.tuple([z.number(), z.number()])),
+});
+export type InfoDeMapa = z.infer<typeof esquemaInfoDeMapa>;
 
 /** Una fila de la lista de salas abiertas. */
 export const esquemaSalaAbierta = z.object({

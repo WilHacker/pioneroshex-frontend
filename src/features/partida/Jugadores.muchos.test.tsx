@@ -44,9 +44,9 @@ describe('Jugadores con una mesa grande', () => {
     expect(within(enTurno[0]!).getByText(/Jugador 5/)).toBeInTheDocument();
   });
 
-  it('cada uno de los 10 tiene un color distinto', () => {
-    const colores = new Set(Array.from({ length: 10 }, (_, i) => colorDeJugador(i)));
+  it('cada uno de los 12 tiene un color distinto', () => {
+    const colores = new Set(Array.from({ length: 12 }, (_, i) => colorDeJugador(i)));
 
-    expect(colores.size).toBe(10);
+    expect(colores.size).toBe(12);
   });
 });

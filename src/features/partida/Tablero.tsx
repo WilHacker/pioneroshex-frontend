@@ -1,4 +1,6 @@
 import type { KeyboardEvent, ReactNode } from 'react';
+import { ControlesDeZoom } from '@/components/ControlesDeZoom';
+import { useZoom } from '@/components/useZoom';
 import type { Hex, Mesa, Punto, Vista } from '@/lib/esquemas';
 import {
   cajaDeMesa,
@@ -36,6 +38,8 @@ type Props = {
   onCasilla: (hex: Hex) => void;
   /** Dibujo extra encima de todo (p. ej. los recursos que reparte una tirada). */
   capa?: ReactNode;
+  /** Zoom con rueda, arrastre, pellizco y botones. Apagado en el tablero decorativo de la portada. */
+  zoom?: boolean;
 };
 
 const SIN_ARISTAS: readonly string[] = [];
@@ -104,16 +108,21 @@ export function Tablero({
   onArista,
   onCasilla,
   capa = null,
+  zoom = false,
 }: Props) {
   const posiciones = posicionesDeVertices(mesa);
   const miColor = colorDeJugador(vista.yo ? indiceDe(vista.yo) : 0);
   const legales = new Set(sitios);
+  const caja = cajaDeMesa(mesa);
+  const { svgRef, viewBox, nivel, acercar, alejar, verTodo, propiedades } = useZoom(caja, zoom);
 
-  return (
+  const tablero = (
     <svg
-      viewBox={viewBoxDe(cajaDeMesa(mesa))}
+      ref={svgRef}
+      viewBox={zoom ? viewBox : viewBoxDe(caja)}
       aria-label="Tablero de juego"
       className="h-full max-h-full w-full max-w-full drop-shadow-[0_12px_24px_rgb(0_0_0/0.35)] select-none"
+      {...propiedades}
     >
       <DefinicionesDeCasilla />
 
@@ -297,5 +306,13 @@ export function Tablero({
           ))}
       {capa}
     </svg>
+  );
+
+  if (!zoom) return tablero;
+  return (
+    <>
+      {tablero}
+      <ControlesDeZoom nivel={nivel} onAcercar={acercar} onAlejar={alejar} onVerTodo={verTodo} />
+    </>
   );
 }

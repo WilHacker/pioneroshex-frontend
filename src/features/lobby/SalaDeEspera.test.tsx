@@ -2,7 +2,8 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { SalaPublica } from '@/lib/esquemas';
 import { yo } from '@/lib/cuentas';
-import { cambiarSala, empezarSala, unirseASala, verSala } from '@/lib/salas';
+import { mapasDePrueba } from '@/lib/pruebas';
+import { cambiarSala, empezarSala, listarMapas, unirseASala, verSala } from '@/lib/salas';
 import { guardarCredencial, leerCredencial } from '@/lib/sesion';
 import { SalaDeEspera } from './SalaDeEspera';
 
@@ -27,6 +28,7 @@ const sala = (extra: Partial<SalaPublica> = {}): SalaPublica => ({
     { id: 'j2', nombre: 'Beto' },
   ],
   publica: false,
+  maximo: 12,
   opciones: {},
   ...extra,
 });
@@ -35,6 +37,7 @@ beforeEach(() => {
   vi.resetAllMocks();
   vi.mocked(leerCredencial).mockReturnValue(null);
   vi.mocked(yo).mockResolvedValue(null);
+  vi.mocked(listarMapas).mockResolvedValue(mapasDePrueba);
 });
 
 describe('SalaDeEspera', () => {
@@ -46,7 +49,7 @@ describe('SalaDeEspera', () => {
     expect(await screen.findByText('Ana ★')).toBeInTheDocument();
     expect(screen.getByText('Beto')).toBeInTheDocument();
     expect(screen.getByRole('heading')).toHaveTextContent('abcd1234');
-    expect(screen.getByRole('list', { name: 'Jugadores (2 de 10)' })).toBeInTheDocument();
+    expect(screen.getByRole('list', { name: 'Jugadores (2 de 12)' })).toBeInTheDocument();
   });
 
   it('el anfitrión empieza la partida con su token', async () => {
@@ -206,5 +209,114 @@ describe('SalaDeEspera', () => {
     await usuario.click(await screen.findByRole('button', { name: 'Unirme a esta sala' }));
 
     expect(unirseASala).toHaveBeenCalledWith('abcd1234', 'Zoe');
+  });
+});
+
+describe('SalaDeEspera: mapa', () => {
+  it('muestra el selector de mapa con el catálogo del servidor', async () => {
+    vi.mocked(leerCredencial).mockReturnValue(ana);
+    vi.mocked(verSala).mockResolvedValue(sala());
+    render(<SalaDeEspera salaId="abcd1234" onEmpezada={vi.fn()} />);
+
+    expect(await screen.findByRole('button', { name: /Grande/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Automático/ })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+  });
+
+  it('marca el mapa que ya eligió el anfitrión', async () => {
+    vi.mocked(leerCredencial).mockReturnValue(beto);
+    vi.mocked(verSala).mockResolvedValue(sala({ opciones: { mapa: 'grande' } }));
+    render(<SalaDeEspera salaId="abcd1234" onEmpezada={vi.fn()} />);
+
+    expect(await screen.findByRole('button', { name: /Grande/ })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+  });
+
+  it('el anfitrión elige un mapa: se ve al instante y se manda su id con su token', async () => {
+    vi.mocked(leerCredencial).mockReturnValue(ana);
+    vi.mocked(verSala).mockResolvedValue(sala());
+    vi.mocked(cambiarSala).mockResolvedValue(undefined);
+    const usuario = userEvent.setup();
+    render(<SalaDeEspera salaId="abcd1234" onEmpezada={vi.fn()} />);
+
+    await usuario.click(await screen.findByRole('button', { name: /Grande/ }));
+
+    expect(cambiarSala).toHaveBeenCalledWith('abcd1234', 'tok-ana', { mapa: 'grande' });
+    expect(screen.getByRole('button', { name: /Grande/ })).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('elegir el automático manda null', async () => {
+    vi.mocked(leerCredencial).mockReturnValue(ana);
+    vi.mocked(verSala).mockResolvedValue(sala({ opciones: { mapa: 'grande' } }));
+    vi.mocked(cambiarSala).mockResolvedValue(undefined);
+    const usuario = userEvent.setup();
+    render(<SalaDeEspera salaId="abcd1234" onEmpezada={vi.fn()} />);
+
+    await usuario.click(await screen.findByRole('button', { name: /Automático/ }));
+
+    expect(cambiarSala).toHaveBeenCalledWith('abcd1234', 'tok-ana', { mapa: null });
+  });
+
+  it('quien no es anfitrión no puede cambiar el mapa', async () => {
+    vi.mocked(leerCredencial).mockReturnValue(beto);
+    vi.mocked(verSala).mockResolvedValue(sala());
+    render(<SalaDeEspera salaId="abcd1234" onEmpezada={vi.fn()} />);
+
+    expect(await screen.findByRole('button', { name: /Grande/ })).toBeDisabled();
+  });
+
+  it('si el servidor rechaza el mapa (no caben), vuelve al anterior y dice por qué', async () => {
+    vi.mocked(leerCredencial).mockReturnValue(ana);
+    vi.mocked(verSala).mockResolvedValue(sala());
+    vi.mocked(cambiarSala).mockRejectedValue(
+      new Error('El mapa «Grande» admite hasta 12 jugadores y la sala ya tiene 13'),
+    );
+    const usuario = userEvent.setup();
+    render(<SalaDeEspera salaId="abcd1234" onEmpezada={vi.fn()} />);
+
+    await usuario.click(await screen.findByRole('button', { name: /Grande/ }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('admite hasta 12');
+    expect(screen.getByRole('button', { name: /Automático/ })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+  });
+
+  it('el máximo de jugadores lo manda el servidor (el del mapa elegido), no una constante', async () => {
+    vi.mocked(leerCredencial).mockReturnValue(ana);
+    vi.mocked(verSala).mockResolvedValue(sala({ maximo: 7, opciones: { mapa: 'clasico' } }));
+    render(<SalaDeEspera salaId="abcd1234" onEmpezada={vi.fn()} />);
+
+    expect(await screen.findByRole('list', { name: 'Jugadores (2 de 7)' })).toBeInTheDocument();
+  });
+
+  it('si el catálogo no carga, la sala sigue funcionando y lo dice', async () => {
+    vi.mocked(leerCredencial).mockReturnValue(ana);
+    vi.mocked(verSala).mockResolvedValue(sala());
+    vi.mocked(listarMapas).mockRejectedValue(new Error('sin red'));
+    render(<SalaDeEspera salaId="abcd1234" onEmpezada={vi.fn()} />);
+
+    expect(await screen.findByText(/No se pudo cargar la lista de mapas/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Automático/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Empezar la partida' })).toBeEnabled();
+  });
+
+  it('el aviso de mapa que «no cabe» usa los jugadores que hay en la sala', async () => {
+    vi.mocked(leerCredencial).mockReturnValue(ana);
+    vi.mocked(verSala).mockResolvedValue(
+      sala({
+        jugadores: Array.from({ length: 8 }, (_, i) => ({ id: `j${i + 1}`, nombre: `P${i + 1}` })),
+      }),
+    );
+    render(<SalaDeEspera salaId="abcd1234" onEmpezada={vi.fn()} />);
+
+    const clasico = await screen.findByRole('button', { name: /Clásico/ });
+    expect(clasico).toBeDisabled();
+    expect(clasico).toHaveTextContent('No cabe');
   });
 });
