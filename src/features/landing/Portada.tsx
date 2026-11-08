@@ -5,35 +5,26 @@ import Link from 'next/link';
 import { useEffect, useState, type ReactNode } from 'react';
 import { IconoAmigos, IconoCuenta, IconoPersona, IconoSala } from '@/components/arte/IconosPortada';
 import { useCuenta } from '@/components/useCuenta';
-import { verResumen, type ResumenDeSalas } from '@/lib/salas';
-
-const REFRESCO_RESUMEN_MS = 30_000;
+import { suscribirPortada } from '@/lib/lobby';
+import type { ResumenDeSalas } from '@/lib/salas';
 
 type Props = {
   /** El tablero decorativo; lo pone la página porque vive en otra feature. */
   tablero: ReactNode;
 };
 
-/** Los números de la portada. Si el servidor no responde, simplemente no se muestran. */
+/** Los números de la portada, en vivo. Si el servidor no responde, simplemente no se muestran. */
 function useResumen(): ResumenDeSalas | null {
   const [resumen, setResumen] = useState<ResumenDeSalas | null>(null);
 
-  useEffect(() => {
-    let controlador = new AbortController();
-    const cargar = (): void => {
-      controlador.abort();
-      controlador = new AbortController();
-      verResumen(controlador.signal)
-        .then(setResumen)
-        .catch(() => undefined);
-    };
-    cargar();
-    const intervalo = setInterval(cargar, REFRESCO_RESUMEN_MS);
-    return () => {
-      clearInterval(intervalo);
-      controlador.abort();
-    };
-  }, []);
+  useEffect(
+    () =>
+      suscribirPortada({
+        alDatos: (portada) => setResumen(portada.resumen),
+        alFallar: () => undefined,
+      }),
+    [],
+  );
 
   return resumen;
 }

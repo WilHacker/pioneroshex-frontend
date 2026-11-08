@@ -9,7 +9,7 @@ import {
   type Recurso,
   type Vista,
 } from '@/lib/esquemas';
-import { NOMBRE_RECURSO } from '@/lib/mensajes';
+import { NOMBRE_RECURSO, textoDeMotivo } from '@/lib/mensajes';
 import { razonDeBanca } from '@/lib/puertos';
 import { CartaRecurso } from './CartaRecurso';
 import { colorDeJugador } from '@/lib/colores';
@@ -104,11 +104,24 @@ export function Comercio({
 }: Props) {
   const [doy, setDoy] = useState<Cantidades>(VACIO);
   const [pido, setPido] = useState<Cantidades>(VACIO);
-  const [destino, setDestino] = useState<Destino>('TODOS');
   const mano = vista.jugadores.find((j) => j.id === vista.yo)?.recursos ?? null;
   const rivales = vista.jugadores.filter((j) => j.id !== vista.yo);
   const puedeTratos = acciones.some((a) => a.tipo === 'PROPONER_TRATO' && a.disponible);
   const puedeBanca = acciones.some((a) => a.tipo === 'CAMBIAR_CON_BANCA' && a.disponible);
+  const privado = vista.config.modoComercio === 'PRIVADO';
+  // Se abre donde se puede hacer algo: en la banca si no hay tratos, y en un jugador si es privado.
+  const [destino, setDestino] = useState<Destino>(() => {
+    if (!puedeTratos) return puedeBanca ? 'BANCA' : 'TODOS';
+    return privado ? (rivales[0]?.id ?? 'TODOS') : 'TODOS';
+  });
+  // Por qué no se puede ofrecer a jugadores (solo si es una regla de la sala, no el turno o la fase).
+  const motivoSinTratos = acciones.find(
+    (a) => a.tipo === 'PROPONER_TRATO' && !a.disponible,
+  )?.motivo;
+  const avisoDeReglas =
+    motivoSinTratos === 'NO_PUEDES_COMERCIAR' || motivoSinTratos === 'DEMASIADAS_OFERTAS'
+      ? textoDeMotivo(motivoSinTratos)
+      : null;
   const conBanca = destino === 'BANCA';
 
   // Con la banca se entregan 4 cartas iguales (3 con un puerto genérico, 2 con el de ese recurso) y
@@ -181,6 +194,11 @@ export function Comercio({
         <IconoIntercambio tamano={36} />
         <h2 className="text-lg font-extrabold">Comerciar</h2>
       </header>
+      {avisoDeReglas && (
+        <output className="block rounded-xl bg-azafran/30 px-3 py-1.5 text-sm font-bold">
+          {avisoDeReglas}
+        </output>
+      )}
       <FilaDeCartas
         titulo="Doy"
         valores={doy}
@@ -191,15 +209,17 @@ export function Comercio({
       <FilaDeCartas titulo="Pido" valores={pido} limite={null} alCambiar={cambiar(setPido, null)} />
 
       <div className="flex flex-wrap items-center gap-2">
-        <button
-          type="button"
-          aria-pressed={destino === 'TODOS'}
-          disabled={!puedeTratos}
-          onClick={() => elegirDestino('TODOS')}
-          className={`rounded-full px-3 py-1 text-sm font-bold disabled:opacity-40 ${destino === 'TODOS' ? 'bg-azafran' : 'bg-white'}`}
-        >
-          Todos
-        </button>
+        {!privado && (
+          <button
+            type="button"
+            aria-pressed={destino === 'TODOS'}
+            disabled={!puedeTratos}
+            onClick={() => elegirDestino('TODOS')}
+            className={`rounded-full px-3 py-1 text-sm font-bold disabled:opacity-40 ${destino === 'TODOS' ? 'bg-azafran' : 'bg-white'}`}
+          >
+            Todos
+          </button>
+        )}
         {rivales.map((j) => (
           <button
             key={j.id}

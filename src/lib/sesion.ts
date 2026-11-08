@@ -56,6 +56,55 @@ export function leerCredencial(
   return guardada ? { salaId, ...guardada } : null;
 }
 
+/** Olvida quién eras en esa sala (al salir de ella o si te sacan). */
+export function olvidarCredencial(
+  salaId: string,
+  almacen: Almacen | null = almacenDelNavegador(),
+): void {
+  if (!almacen) return;
+  const { [salaId]: _olvidada, ...resto } = leerTodas(almacen);
+  try {
+    almacen.setItem(CLAVE, JSON.stringify(resto));
+  } catch {
+    // Sin almacenamiento no hay nada que olvidar.
+  }
+}
+
+const CLAVE_SORTEO = 'pioneroshex:sorteo-visto';
+
+function salasConSorteoVisto(almacen: Almacen): readonly string[] {
+  try {
+    const crudo = almacen.getItem(CLAVE_SORTEO);
+    const lista: unknown = crudo === null ? [] : JSON.parse(crudo);
+    return Array.isArray(lista) ? lista.filter((x): x is string => typeof x === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+
+/** ¿Ya se enseñó en esta pestaña el sorteo del orden de turno de esa partida? */
+export function yaVioElSorteo(
+  salaId: string,
+  almacen: Almacen | null = almacenDelNavegador(),
+): boolean {
+  return almacen !== null && salasConSorteoVisto(almacen).includes(salaId);
+}
+
+/** Recuerda que ya se vio, para no repetirlo al recargar la pantalla. */
+export function marcarSorteoVisto(
+  salaId: string,
+  almacen: Almacen | null = almacenDelNavegador(),
+): void {
+  if (!almacen) return;
+  try {
+    const vistas = salasConSorteoVisto(almacen);
+    if (!vistas.includes(salaId))
+      almacen.setItem(CLAVE_SORTEO, JSON.stringify([...vistas, salaId]));
+  } catch {
+    // Sin almacenamiento solo se vuelve a ver el sorteo al recargar: no es grave.
+  }
+}
+
 const CLAVE_NOMBRE = 'pioneroshex:nombre';
 
 function almacenPersistente(): Almacen | null {

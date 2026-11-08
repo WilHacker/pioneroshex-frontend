@@ -92,6 +92,18 @@ Estado del cliente (se instala cuando haga falta, no antes):
 
 ## Trampas conocidas
 
+- **El zoom y el arrastre del tablero deben seguir fluidos.** Pintar el `<svg>` en cada paso es lo que
+  cuesta (medido en Chrome: de ~24 a ~70 fps con los cambios de abajo). Por eso: el `<svg>` **no lleva
+  sombra CSS** (`filter`/`drop-shadow` obliga a repintarlo entero); mientras dura un gesto `useZoom` le
+  pone la clase `tablero-en-gesto`, que apaga el suavizado de formas (`globals.css`); y las imágenes
+  SVG del tablero se convierten a mapas de bits una sola vez (`src/lib/bitmaps.ts`), porque una
+  `<image>` con un SVG dentro se vuelve a dibujar completa con cada cambio de escala. Para medir:
+  `PerformanceObserver` de `long-animation-frame` mientras se simulan ruedas, alternando variantes.
+- **Los puertos deben verse bien en los 15 mapas**, también los irregulares (lagos, canales, islas):
+  `posicionDePuerto` saca el barco hacia afuera de la casilla de su arista (no desde el centro del
+  tablero) y lo acerca a la costa si al otro lado hay otra casilla. Al tocar eso, revisar los mapas
+  `remolino`, `lucha`, `fiebre-del-oro`, `reino-unido` y `tierra`.
+
 - **TypeScript fijado en 6** y `@types/node` en 24 (= Node 24). Dependabot ignora esos saltos
   mayores. No está comprobado que Next 16 funcione bien con TS 7.
 - **pnpm 11 bloquea los scripts de instalación.** Aprobar por nombre en `pnpm-workspace.yaml`,
@@ -126,6 +138,8 @@ Estado del cliente (se instala cuando haga falta, no antes):
 - Salas por HTTP: `POST /salas`, `POST /salas/:id/unirse`, `GET /salas/:id`,
   `POST /salas/:id/empezar` (`Authorization: Bearer <token>`). **429** si una IP pasa de 20
   peticiones por minuto. Cliente en `src/lib/salas.ts`.
+- **Sala de espera, lobby y portada por socket** (namespace `/lobby`, `src/lib/lobby.ts`): `suscribirSala` y
+  `suscribirPortada` reemplazan al sondeo; las acciones siguen por HTTP. Los componentes no abren sockets.
 - Partida por socket.io: `juego:accion` (con acuse), `juego:inicio`, `juego:notificacion`,
   `juego:error`. Esquemas Zod duplicados en `src/lib/esquemas.ts`; el protocolo completo está en la
   nota `Contrato-de-Red` del vault de Obsidian.

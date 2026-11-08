@@ -1,10 +1,13 @@
 import {
   cambiarSala,
+  cederAnfitrion,
   crearSala,
   empezarSala,
   ErrorApi,
+  expulsarDeSala,
   listarMapas,
   listarSalas,
+  salirDeSala,
   unirseASala,
   verResumen,
   verSala,
@@ -223,5 +226,51 @@ describe('listarMapas', () => {
       'http://localhost:3001/salas/abcd1234',
       expect.objectContaining({ body: JSON.stringify({ mapa: null }) }),
     );
+  });
+});
+
+describe('salir, expulsar y ceder el anfitrión', () => {
+  it('salirDeSala hace POST a /salir con el token de quien sale', async () => {
+    responder(undefined, 204);
+    await salirDeSala('abcd1234', 'secreto');
+    expect(fetch).toHaveBeenCalledWith(
+      'http://localhost:3001/salas/abcd1234/salir',
+      expect.objectContaining({
+        method: 'POST',
+        headers: { Authorization: 'Bearer secreto' },
+      }),
+    );
+  });
+
+  it('expulsarDeSala hace DELETE al jugador con el token del anfitrión', async () => {
+    responder(undefined, 204);
+    await expulsarDeSala('abcd1234', 'secreto', 'j2');
+    expect(fetch).toHaveBeenCalledWith(
+      'http://localhost:3001/salas/abcd1234/jugadores/j2',
+      expect.objectContaining({ method: 'DELETE' }),
+    );
+  });
+
+  it('cederAnfitrion hace POST a /anfitrion con el id del nuevo anfitrión', async () => {
+    responder(undefined, 204);
+    await cederAnfitrion('abcd1234', 'secreto', 'j3');
+    expect(fetch).toHaveBeenCalledWith(
+      'http://localhost:3001/salas/abcd1234/anfitrion',
+      expect.objectContaining({ method: 'POST', body: JSON.stringify({ jugadorId: 'j3' }) }),
+    );
+  });
+
+  it('codifica en la ruta lo que no es seguro', async () => {
+    responder(undefined, 204);
+    await expulsarDeSala('a/b', 'secreto', 'j 2');
+    expect(fetch).toHaveBeenCalledWith(
+      'http://localhost:3001/salas/a%2Fb/jugadores/j%202',
+      expect.anything(),
+    );
+  });
+
+  it('un rechazo del servidor llega como ErrorApi con su estado', async () => {
+    responder({ message: 'Solo el anfitrión puede cambiar o empezar la partida' }, 403);
+    await expect(expulsarDeSala('abcd1234', 'x', 'j2')).rejects.toMatchObject({ estado: 403 });
   });
 });

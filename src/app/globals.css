@@ -146,6 +146,12 @@ body {
   animation: respirar 1.6s ease-in-out infinite;
 }
 
+/* Mientras se hace zoom o se arrastra el tablero se dibuja sin suavizar los bordes: es mucho más
+   rápido y no se nota en movimiento. Al quedarse quieto, `useZoom` quita la clase. */
+.tablero-en-gesto * {
+  shape-rendering: optimizeSpeed;
+}
+
 .dado-rodando {
   animation: rodar 0.45s ease-out;
 }

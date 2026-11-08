@@ -49,4 +49,23 @@ describe('GuiaDeDesarrollo', () => {
     ver(1);
     expect(fila(/Caballero/)).toHaveTextContent('14 cartas');
   });
+
+  it('empieza explicando cuántas cartas hay en total y que se pueden jugar antes de tirar', () => {
+    render(<GuiaDeDesarrollo jugadores={4} puntosVictoria={10} />);
+    const intro = screen.getByText(/habilidades especiales/i);
+    expect(intro).toHaveTextContent('25 en total');
+    expect(intro).toHaveTextContent(/antes de tirar los dados/i);
+  });
+
+  it('el total de la introducción crece con el mazo: 8 jugadores, 50 cartas', () => {
+    render(<GuiaDeDesarrollo jugadores={8} puntosVictoria={10} />);
+    expect(screen.getByText(/habilidades especiales/i)).toHaveTextContent('50 en total');
+  });
+
+  it('recuerda el límite: una carta por turno y no la que acabas de comprar', () => {
+    render(<GuiaDeDesarrollo jugadores={4} puntosVictoria={10} />);
+    const intro = screen.getByText(/habilidades especiales/i);
+    expect(intro).toHaveTextContent(/una por turno/i);
+    expect(intro).toHaveTextContent(/comprada/i);
+  });
 });

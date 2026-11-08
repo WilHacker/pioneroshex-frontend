@@ -3,9 +3,11 @@ import { env } from '@/config/env';
 import {
   esquemaInicio,
   esquemaNotificacion,
+  esquemaPresencia,
   esquemaRespuestaAccion,
   type Inicio,
   type Notificacion,
+  type Presencia,
   type RespuestaAccion,
 } from './esquemas';
 
@@ -17,6 +19,8 @@ export type EstadoConexion = 'conectando' | 'conectado' | 'reconectando' | 'cerr
 export interface Manejadores {
   alInicio: (inicio: Inicio) => void;
   alNotificar: (notificacion: Notificacion) => void;
+  /** Alguien entró, se fue o el piloto automático empezó a jugar por alguien. */
+  alPresencia: (presencia: Presencia) => void;
   /** El servidor no nos deja entrar (token inválido, partida sin empezar...). */
   alRechazar: (motivo: string) => void;
   alCambiarEstado: (estado: EstadoConexion) => void;
@@ -49,6 +53,11 @@ export function conectar(auth: { salaId: string; token: string }, m: Manejadores
   socket.on('juego:notificacion', (datos: unknown) => {
     const notificacion = esquemaNotificacion.safeParse(datos);
     if (notificacion.success) m.alNotificar(notificacion.data);
+    else m.alRechazar('RESPUESTA_INVALIDA');
+  });
+  socket.on('juego:presencia', (datos: unknown) => {
+    const presencia = esquemaPresencia.safeParse(datos);
+    if (presencia.success) m.alPresencia(presencia.data);
     else m.alRechazar('RESPUESTA_INVALIDA');
   });
   socket.on('juego:error', (datos: unknown) => {

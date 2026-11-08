@@ -4,6 +4,9 @@ import {
   guardarNombre,
   leerCredencial,
   leerNombre,
+  marcarSorteoVisto,
+  olvidarCredencial,
+  yaVioElSorteo,
   type Almacen,
 } from './sesion';
 
@@ -103,5 +106,48 @@ describe('enlaceDeSala', () => {
     expect(enlaceDeSala('http://192.168.1.20:3000', 'abcd1234')).toBe(
       'http://192.168.1.20:3000/sala/abcd1234',
     );
+  });
+});
+
+describe('olvidarCredencial', () => {
+  it('borra solo la sala indicada', () => {
+    const almacen = almacenEnMemoria();
+    guardarCredencial(ana, almacen);
+    guardarCredencial(beto, almacen);
+    olvidarCredencial('sala1111', almacen);
+    expect(leerCredencial('sala1111', almacen)).toBeNull();
+    expect(leerCredencial('sala2222', almacen)).toEqual(beto);
+  });
+
+  it('si no había nada guardado no hace nada ni falla', () => {
+    const almacen = almacenEnMemoria();
+    expect(() => olvidarCredencial('sala1111', almacen)).not.toThrow();
+    expect(() => olvidarCredencial('sala1111', null)).not.toThrow();
+  });
+});
+
+describe('sorteo visto', () => {
+  it('al principio no se ha visto y, una vez marcado, sí, solo para esa partida', () => {
+    const almacen = almacenEnMemoria();
+    expect(yaVioElSorteo('sala1111', almacen)).toBe(false);
+    marcarSorteoVisto('sala1111', almacen);
+    expect(yaVioElSorteo('sala1111', almacen)).toBe(true);
+    expect(yaVioElSorteo('sala2222', almacen)).toBe(false);
+  });
+
+  it('marcar dos veces no duplica y varias partidas conviven', () => {
+    const almacen = almacenEnMemoria();
+    marcarSorteoVisto('a', almacen);
+    marcarSorteoVisto('a', almacen);
+    marcarSorteoVisto('b', almacen);
+    expect(JSON.parse(almacen.getItem('pioneroshex:sorteo-visto')!)).toEqual(['a', 'b']);
+  });
+
+  it('aguanta un almacén roto o ausente sin fallar', () => {
+    const roto = almacenEnMemoria({ 'pioneroshex:sorteo-visto': 'esto no es json' });
+    expect(yaVioElSorteo('a', roto)).toBe(false);
+    expect(() => marcarSorteoVisto('a', roto)).not.toThrow();
+    expect(yaVioElSorteo('a', null)).toBe(false);
+    expect(() => marcarSorteoVisto('a', null)).not.toThrow();
   });
 });

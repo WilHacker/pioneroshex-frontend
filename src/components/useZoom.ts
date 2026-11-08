@@ -18,6 +18,10 @@ import {
 /** Lo que se acerca o aleja con cada botón o cada "paso" de la rueda. */
 const FACTOR_BOTON = 1.6;
 const FACTOR_RUEDA = 1.15;
+/** Sin gestos durante este tiempo, el tablero vuelve a dibujarse con todo detalle. */
+const REPOSO_MS = 300;
+/** Clase del `<svg>` mientras dura un gesto: el CSS la usa para dibujar más rápido (ver globals.css). */
+const CLASE_EN_GESTO = 'tablero-en-gesto';
 /** Píxeles que hay que mover el dedo para que un toque cuente como arrastre y no como clic. */
 const UMBRAL_ARRASTRE_PX = 6;
 
@@ -65,8 +69,27 @@ export function useZoom(base: Caja, activo: boolean): ZoomDelSvg {
   const caja = estado.clave === claveBase ? estado.caja : base;
   const nivel = nivelDeZoom(base, caja);
 
+  const temporizadorDeGesto = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const dedos = useRef(new Map<number, Dedo>());
   const arrastre = useRef({ recorrido: 0, movido: false });
+
+  /**
+   * Mientras se hace zoom o se arrastra, el `<svg>` se repinta decenas de veces por segundo: se le
+   * pone una clase que apaga el suavizado de bordes y se quita al quedarse quieto. Se hace sobre el
+   * DOM, sin pasar por React, para no sumar renderizados a cada paso.
+   */
+  const marcarGesto = useCallback((): void => {
+    const svg = svgRef.current;
+    if (!svg) return;
+    svg.classList.add(CLASE_EN_GESTO);
+    clearTimeout(temporizadorDeGesto.current);
+    temporizadorDeGesto.current = setTimeout(
+      () => svgRef.current?.classList.remove(CLASE_EN_GESTO),
+      REPOSO_MS,
+    );
+  }, []);
+
+  useEffect(() => () => clearTimeout(temporizadorDeGesto.current), []);
 
   /** Cambia la vista a partir de la actual; si era de otro tablero, parte de la entera. */
   const actualizar = useCallback(
@@ -101,11 +124,12 @@ export function useZoom(base: Caja, activo: boolean): ZoomDelSvg {
     if (!activo || !svg) return;
     const alRodar = (e: WheelEvent): void => {
       e.preventDefault();
+      marcarGesto();
       zoomEn(e.deltaY < 0 ? FACTOR_RUEDA : 1 / FACTOR_RUEDA, { x: e.clientX, y: e.clientY });
     };
     svg.addEventListener('wheel', alRodar, { passive: false });
     return () => svg.removeEventListener('wheel', alRodar);
-  }, [activo, zoomEn]);
+  }, [activo, zoomEn, marcarGesto]);
 
   const acercar = useCallback(() => zoomEn(FACTOR_BOTON), [zoomEn]);
   const alejar = useCallback(() => zoomEn(1 / FACTOR_BOTON), [zoomEn]);
@@ -129,6 +153,7 @@ export function useZoom(base: Caja, activo: boolean): ZoomDelSvg {
       const antes = distancia(anterior, otro);
       const despues = distancia(ahora, otro);
       arrastre.current.movido = true;
+      marcarGesto();
       if (antes > 0 && despues > 0) {
         zoomEn(despues / antes, { x: (ahora.x + otro.x) / 2, y: (ahora.y + otro.y) / 2 });
       }
@@ -145,6 +170,7 @@ export function useZoom(base: Caja, activo: boolean): ZoomDelSvg {
       svgRef.current?.setPointerCapture?.(e.pointerId);
     }
     arrastre.current.movido = true;
+    marcarGesto();
     const rect = svgRef.current?.getBoundingClientRect();
     if (!rect) return;
     actualizar((actual) => {

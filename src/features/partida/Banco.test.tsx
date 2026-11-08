@@ -100,4 +100,36 @@ describe('Banco', () => {
       ).not.toBeInTheDocument();
     });
   });
+
+  describe('con las cartas del banco ocultas', () => {
+    const oculto = () => ver({ banco: null, tamanoMazo: null });
+
+    it('las cartas siguen ahí, pero sin ningún número', () => {
+      const { container } = oculto();
+      for (const recurso of RECURSOS) {
+        expect(container.querySelector(`[data-banco-recurso="${recurso}"]`)).toBeInTheDocument();
+      }
+      expect(container.querySelector('img[src$="/cartas/madera.svg"]')).toBeInTheDocument();
+      expect(screen.queryByText(/^\d+$/)).not.toBeInTheDocument();
+    });
+
+    it('un lector de pantalla sabe que la cantidad es secreta, no que falta', () => {
+      oculto();
+      expect(screen.getByLabelText(/madera en el banco: cantidad oculta/i)).toBeInTheDocument();
+      expect(
+        screen.getByLabelText(/cartas de desarrollo en el mazo: cantidad oculta/i),
+      ).toBeInTheDocument();
+    });
+
+    it('nada se ve apagado ni «agotado»: no se puede saber', () => {
+      oculto();
+      expect(screen.queryByText('agotado')).not.toBeInTheDocument();
+    });
+
+    it('la guía del mazo sigue abriéndose', async () => {
+      oculto();
+      await userEvent.click(screen.getByRole('button', { name: /cartas de desarrollo/i }));
+      expect(screen.getByText(/habilidades especiales/i)).toBeInTheDocument();
+    });
+  });
 });

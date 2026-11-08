@@ -20,7 +20,13 @@ const { socketFalso, io } = vi.hoisted(() => {
 vi.mock('socket.io-client', () => ({ io }));
 
 function manejadores(): Manejadores {
-  return { alInicio: vi.fn(), alNotificar: vi.fn(), alRechazar: vi.fn(), alCambiarEstado: vi.fn() };
+  return {
+    alInicio: vi.fn(),
+    alNotificar: vi.fn(),
+    alRechazar: vi.fn(),
+    alCambiarEstado: vi.fn(),
+    alPresencia: vi.fn(),
+  };
 }
 const emitir = (evento: string, ...args: unknown[]): void =>
   socketFalso.escuchas.get(evento)?.(...args);
@@ -92,6 +98,37 @@ describe('conectar', () => {
       'PARTIDA_NO_EMPEZADA',
       'NO_AUTORIZADO',
     ]);
+  });
+});
+
+describe('presencia', () => {
+  it('entrega la presencia válida que manda el servidor', () => {
+    const m = manejadores();
+    conectar({ salaId: 's', token: 't' }, m);
+    const presencia = { conectados: ['j1'], piloto: ['j2'], abandonaron: ['j3'] };
+    emitir('juego:presencia', presencia);
+    expect(m.alPresencia).toHaveBeenCalledWith(presencia);
+  });
+
+  it('una presencia con otra forma se avisa como rechazo y no se entrega', () => {
+    const m = manejadores();
+    conectar({ salaId: 's', token: 't' }, m);
+    emitir('juego:presencia', { conectados: 'todos' });
+    expect(m.alPresencia).not.toHaveBeenCalled();
+    expect(m.alRechazar).toHaveBeenCalledWith('RESPUESTA_INVALIDA');
+  });
+
+  it('el inicio puede traer la presencia, y es opcional', () => {
+    const m = manejadores();
+    conectar({ salaId: 's', token: 't' }, m);
+    const con = {
+      ...inicioDePrueba(),
+      presencia: { conectados: ['j1'], piloto: [], abandonaron: [] },
+    };
+    emitir('juego:inicio', con);
+    expect(m.alInicio).toHaveBeenCalledWith(con);
+    emitir('juego:inicio', inicioDePrueba());
+    expect(m.alInicio).toHaveBeenCalledTimes(2);
   });
 });
 

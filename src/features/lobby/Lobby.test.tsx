@@ -1,24 +1,54 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { yo } from '@/lib/cuentas';
-import { crearSala, listarSalas, unirseASala } from '@/lib/salas';
+import { mapasDePrueba } from '@/lib/pruebas';
+import { suscribirPortada, type PortadaEnVivo } from '@/lib/lobby';
+import { crearSala, listarMapas, unirseASala, verRecomendado } from '@/lib/salas';
 import { guardarCredencial, guardarNombre, leerNombre } from '@/lib/sesion';
 import { Lobby } from './Lobby';
 
 const push = vi.fn();
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push }) }));
 vi.mock('@/lib/salas');
+vi.mock('@/lib/lobby');
 vi.mock('@/lib/cuentas');
 vi.mock('@/lib/sesion');
 
 const credencial = { salaId: 'abcd1234', jugadorId: 'j1', token: 'secreto' };
 const fila = { id: 'abcd1234', anfitrion: 'Beto', jugadores: 2, maximo: 10 };
 
+/** El servidor manda estas salas abiertas nada más conectarse. */
+function salasAbiertas(salas: PortadaEnVivo['salas']): void {
+  vi.mocked(suscribirPortada).mockImplementation((m) => {
+    m.alDatos({
+      salas,
+      resumen: { salasAbiertas: salas.length, partidasEnCurso: 0, jugadores: 0 },
+    });
+    return vi.fn();
+  });
+}
+
+/** No se puede conectar con el servidor. */
+function portadaFalla(): void {
+  vi.mocked(suscribirPortada).mockImplementation((m) => {
+    m.alFallar();
+    return vi.fn();
+  });
+}
+
 beforeEach(() => {
   vi.resetAllMocks();
   vi.mocked(leerNombre).mockReturnValue('');
-  vi.mocked(listarSalas).mockResolvedValue([fila]);
+  salasAbiertas([fila]);
   vi.mocked(yo).mockResolvedValue(null);
+  vi.mocked(listarMapas).mockResolvedValue(mapasDePrueba);
+  vi.mocked(verRecomendado).mockResolvedValue({
+    puntosVictoria: 10,
+    turnoSegundos: 90,
+    robberHandLimit: 7,
+    turnRuleMode: 'A',
+    modoDados: 'AZAR',
+  });
 });
 
 describe('Lobby', () => {
@@ -53,19 +83,19 @@ describe('Lobby', () => {
 
   it('una sala llena no se puede elegir', async () => {
     vi.mocked(leerNombre).mockReturnValue('Ana');
-    vi.mocked(listarSalas).mockResolvedValue([{ ...fila, jugadores: 10 }]);
+    salasAbiertas([{ ...fila, jugadores: 10 }]);
     render(<Lobby />);
 
     expect(await screen.findByRole('button', { name: 'Entrar' })).toBeDisabled();
   });
 
   it('sin salas abiertas lo dice, y si no carga la lista también', async () => {
-    vi.mocked(listarSalas).mockResolvedValueOnce([]);
+    salasAbiertas([]);
     const { unmount } = render(<Lobby />);
     expect(await screen.findByText('No hay salas abiertas')).toBeInTheDocument();
     unmount();
 
-    vi.mocked(listarSalas).mockRejectedValue(new Error('sin red'));
+    portadaFalla();
     render(<Lobby />);
     expect(await screen.findByText('No se pudo cargar la lista')).toBeInTheDocument();
   });
@@ -80,7 +110,11 @@ describe('Lobby', () => {
     await usuario.click(screen.getByRole('button', { name: 'Pública' }));
     await usuario.click(screen.getByRole('button', { name: 'Crear sala' }));
 
-    expect(crearSala).toHaveBeenCalledWith('Ana', true);
+    expect(crearSala).toHaveBeenCalledWith(
+      'Ana',
+      true,
+      expect.objectContaining({ maxJugadores: 4 }),
+    );
     expect(push).toHaveBeenCalledWith('/sala/abcd1234');
   });
 
@@ -93,7 +127,11 @@ describe('Lobby', () => {
     await usuario.click(screen.getByRole('tab', { name: 'Crear' }));
     await usuario.click(screen.getByRole('button', { name: 'Crear sala' }));
 
-    expect(crearSala).toHaveBeenCalledWith('Ana', false);
+    expect(crearSala).toHaveBeenCalledWith(
+      'Ana',
+      false,
+      expect.objectContaining({ maxJugadores: 4, puntosVictoria: 10 }),
+    );
   });
 
   it('con un código, lo normaliza para unirse', async () => {

@@ -73,7 +73,7 @@ export function Paleta({
   onComercio,
 }: Props) {
   const yo = vista.jugadores.find((j) => j.id === vista.yo);
-  const restantes: Record<TipoPieza, number> = {
+  const restantes: Record<TipoPieza, number | null> = {
     CAMINO: yo?.piezasRestantes.caminos ?? 0,
     POBLADO: yo?.piezasRestantes.poblados ?? 0,
     CIUDAD: yo?.piezasRestantes.ciudades ?? 0,
@@ -126,9 +126,11 @@ export function Paleta({
                 color={e.pieza === 'CARTA' ? '#2f6fe0' : color}
                 tamano={38}
               />
-              <span className="absolute -top-2 -right-2 flex min-w-6 items-center justify-center rounded-full bg-tinta px-1 text-[0.7rem] font-extrabold text-white ring-2 ring-white">
-                {restantes[e.pieza]}
-              </span>
+              {restantes[e.pieza] !== null && (
+                <span className="absolute -top-2 -right-2 flex min-w-6 items-center justify-center rounded-full bg-tinta px-1 text-[0.7rem] font-extrabold text-white ring-2 ring-white">
+                  {restantes[e.pieza]}
+                </span>
+              )}
             </button>
           </div>
         );

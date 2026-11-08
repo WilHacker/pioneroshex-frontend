@@ -109,6 +109,40 @@ describe('victimasEn', () => {
   });
 });
 
+describe('victimasEn con ladrón amistoso', () => {
+  const hex0 = { q: 0, r: 0, s: 0 };
+  const edificios = { [V1]: { dueno: 'j2', tipo: 'POBLADO' as const } };
+
+  /** Una vista con la regla (o sin ella) en la que j2 tiene `puntos` puntos públicos. */
+  const vistaCon = (ladronAmistoso: boolean, puntos: number) => {
+    const base = vistaDePrueba({ edificios });
+    return {
+      ...base,
+      config: { ...base.config, ladronAmistoso },
+      jugadores: base.jugadores.map((j) => (j.id === 'j2' ? { ...j, puntos } : j)),
+    };
+  };
+
+  it('con la regla, quien tiene menos de 3 puntos no es una víctima', () => {
+    expect(victimasEn(mesaDePrueba, vistaCon(true, 2), hex0)).toEqual([]);
+    expect(victimasEn(mesaDePrueba, vistaCon(true, 1), hex0)).toEqual([]);
+  });
+
+  it('con la regla, desde 3 puntos sí lo es', () => {
+    expect(victimasEn(mesaDePrueba, vistaCon(true, 3), hex0)).toEqual(['j2']);
+    expect(victimasEn(mesaDePrueba, vistaCon(true, 7), hex0)).toEqual(['j2']);
+  });
+
+  it('sin la regla, los puntos no importan', () => {
+    expect(victimasEn(mesaDePrueba, vistaCon(false, 1), hex0)).toEqual(['j2']);
+  });
+
+  it('una vista sin el dato de la regla se trata como sin regla', () => {
+    const base = vistaDePrueba({ edificios });
+    expect(victimasEn(mesaDePrueba, base, hex0)).toEqual(['j2']);
+  });
+});
+
 describe('claveHex', () => {
   it('usa el mismo formato que los ids de vértice del servidor', () => {
     expect(claveHex({ q: -1, r: 2 })).toBe('-1,2');

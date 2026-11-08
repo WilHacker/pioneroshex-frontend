@@ -1,12 +1,14 @@
 import Image from 'next/image';
 import { IconoCartaMano, IconoEstrella } from '@/components/arte/IconosEstado';
 import { colorDeJugador } from '@/lib/colores';
-import type { Vista } from '@/lib/esquemas';
+import type { Presencia, Vista } from '@/lib/esquemas';
+import { estadoDePresencia, ETIQUETA_DE_PRESENCIA } from './presencia';
 
 type Props = {
   vista: Vista;
   nombreDe: (jugadorId: string) => string;
   indiceDe: (jugadorId: string) => number;
+  presencia?: Presencia | null;
 };
 
 /**
@@ -14,7 +16,7 @@ type Props = {
  * color, sus puntos y sus cartas. El de turno lleva un aro azafrán. En pantallas grandes se usa la
  * lista completa de `Jugadores`.
  */
-export function TiraDeJugadores({ vista, nombreDe, indiceDe }: Props) {
+export function TiraDeJugadores({ vista, nombreDe, indiceDe, presencia = null }: Props) {
   const turno = vista.fase === 'CONSTRUCCION_ESPECIAL' ? vista.turnoEspecialDe : vista.turnoDe;
 
   return (
@@ -25,11 +27,13 @@ export function TiraDeJugadores({ vista, nombreDe, indiceDe }: Props) {
       {vista.jugadores.map((j) => {
         const enTurno = j.id === turno;
         const soyYo = j.id === vista.yo;
+        const ausencia = estadoDePresencia(presencia, j.id, vista.yo);
         return (
           <li
             key={j.id}
             data-jugador-id={j.id}
             data-en-turno={enTurno ? 'true' : undefined}
+            data-presencia={ausencia ?? undefined}
             aria-current={enTurno ? 'true' : undefined}
             title={nombreDe(j.id)}
             className={`flex shrink-0 items-center gap-1.5 rounded-full py-1 pr-2.5 pl-1 text-tinta shadow ${enTurno ? 'bg-azafran-claro ring-2 ring-azafran' : 'bg-niebla'}`}
@@ -45,7 +49,15 @@ export function TiraDeJugadores({ vista, nombreDe, indiceDe }: Props) {
               {nombreDe(j.id)}
               {soyYo ? ' (tú)' : ''}
               {enTurno ? ' · en turno' : ''}
+              {ausencia ? ` · ${ETIQUETA_DE_PRESENCIA[ausencia].texto}` : ''}
             </span>
+            {ausencia && (
+              <span
+                aria-hidden="true"
+                title={ETIQUETA_DE_PRESENCIA[ausencia].ayuda}
+                className={`size-2.5 rounded-full ${ausencia === 'piloto' ? 'bg-azafran' : 'bg-tinta/60'}`}
+              />
+            )}
             <span className="flex items-center gap-0.5 text-sm font-extrabold" title="Puntos">
               <IconoEstrella tamano={16} />
               {j.puntos}

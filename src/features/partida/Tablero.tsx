@@ -1,19 +1,29 @@
-import type { KeyboardEvent, ReactNode } from 'react';
+import { memo, useMemo, type KeyboardEvent, type ReactNode } from 'react';
 import { ControlesDeZoom } from '@/components/ControlesDeZoom';
 import { useZoom } from '@/components/useZoom';
 import type { Hex, Mesa, Punto, Vista } from '@/lib/esquemas';
 import {
   cajaDeMesa,
+  type Caja,
   claveHex,
   esquinasDeCasilla,
   posicionDePuerto,
+  separarEtiquetas,
   posicionesDeVertices,
   viewBoxDe,
 } from '@/lib/tablero';
 import { Casilla, DefinicionesDeCasilla } from './Casilla';
 import { colorDeJugador } from '@/lib/colores';
 import { puertosConectados } from '@/lib/puertos';
-import { Camino, Ciudad, Ladron, Poblado, Puerto } from './PiezasSVG';
+import {
+  Camino,
+  Ciudad,
+  Ladron,
+  Poblado,
+  Puerto,
+  etiquetaHabitual,
+  medidasDeEtiqueta,
+} from './PiezasSVG';
 
 /** Qué se puede tocar ahora en el tablero. */
 export type Objetivo = 'POBLADOS' | 'CIUDADES' | 'ARISTAS' | 'CASILLAS' | null;
@@ -110,7 +120,28 @@ function Confirmar({ posicion }: { posicion: Punto }) {
   );
 }
 
-export function Tablero({
+/** Dónde va cada puerto y su etiqueta, ya separada de las vecinas en los entrantes estrechos. */
+function lugaresConEtiqueta(mesa: Mesa, posiciones: ReadonlyMap<string, Punto>) {
+  const colocados = mesa.puertos.flatMap((p) => {
+    const lugar = posicionDePuerto(p.vertices, posiciones, mesa.casillas);
+    return lugar ? [{ p, lugar }] : [];
+  });
+  const separadas = separarEtiquetas(
+    colocados.map(({ p, lugar }) => ({
+      centro: etiquetaHabitual(lugar.mar, lugar.afuera),
+      ...medidasDeEtiqueta(p.tipo),
+    })),
+  );
+  return colocados.map((c, i) => ({ ...c, etiquetaEn: separadas[i] }));
+}
+
+type ContenidoProps = Omit<Props, 'zoom'>;
+
+/**
+ * Todo lo que se dibuja dentro del `<svg>`. Está memoizado: el zoom y el arrastre cambian el
+ * `viewBox` muchas veces por segundo y esto no debe volver a calcularse con cada uno.
+ */
+const ContenidoDelTablero = memo(function ContenidoDelTablero({
   mesa,
   vista,
   indiceDe,
@@ -124,23 +155,15 @@ export function Tablero({
   onArista,
   onCasilla,
   capa = null,
-  zoom = false,
-}: Props) {
+}: ContenidoProps) {
   const posiciones = posicionesDeVertices(mesa);
   const miColor = colorDeJugador(vista.yo ? indiceDe(vista.yo) : 0);
   const legales = new Set(sitios);
   const conectados = puertosConectados(mesa, vista);
-  const caja = cajaDeMesa(mesa);
-  const { svgRef, viewBox, nivel, acercar, alejar, verTodo, propiedades } = useZoom(caja, zoom);
+  const lugaresDePuertos = lugaresConEtiqueta(mesa, posiciones);
 
-  const tablero = (
-    <svg
-      ref={svgRef}
-      viewBox={zoom ? viewBox : viewBoxDe(caja)}
-      aria-label="Tablero de juego"
-      className="h-full max-h-full w-full max-w-full drop-shadow-[0_12px_24px_rgb(0_0_0/0.35)] select-none"
-      {...propiedades}
-    >
+  return (
+    <>
       <DefinicionesDeCasilla />
 
       {/* La isla tiene un borde de mar poco profundo y otro de playa, por debajo de las casillas. */}
@@ -179,19 +202,19 @@ export function Tablero({
         />
       ))}
 
-      {mesa.puertos.map((p) => {
-        const lugar = posicionDePuerto(p.vertices, posiciones);
+      {lugaresDePuertos.map(({ p, lugar, etiquetaEn }) => {
         const mios = conectados.get(p.arista) ?? [];
-        return lugar ? (
+        return (
           <Puerto
             key={p.arista}
             vertices={lugar.vertices}
             mar={lugar.mar}
             afuera={lugar.afuera}
+            etiquetaEn={etiquetaEn}
             tipo={p.tipo}
             conectados={[mios.includes(p.vertices[0]), mios.includes(p.vertices[1])]}
           />
-        ) : null;
+        );
       })}
 
       {mesa.aristas.map((a) => {
@@ -356,14 +379,43 @@ export function Tablero({
             <Ladron key="ladron" posicion={{ x: c.centro.x + 0.34, y: c.centro.y - 0.08 }} />
           ))}
       {capa}
+    </>
+  );
+});
+
+type MarcoProps = { caja: Caja; zoom: boolean; children: ReactNode };
+
+/**
+ * El `<svg>` con su zoom. Guarda el estado del zoom (que cambia sin parar) y recibe el dibujo como
+ * `children`: como ese elemento no cambia, React no lo vuelve a recorrer en cada paso del zoom.
+ */
+function MarcoDelTablero({ caja, zoom, children }: MarcoProps) {
+  const { svgRef, viewBox, nivel, acercar, alejar, verTodo, propiedades } = useZoom(caja, zoom);
+  const svg = (
+    <svg
+      ref={svgRef}
+      viewBox={zoom ? viewBox : viewBoxDe(caja)}
+      aria-label="Tablero de juego"
+      className="h-full max-h-full w-full max-w-full select-none"
+      {...propiedades}
+    >
+      {children}
     </svg>
   );
-
-  if (!zoom) return tablero;
+  if (!zoom) return svg;
   return (
     <>
-      {tablero}
+      {svg}
       <ControlesDeZoom nivel={nivel} onAcercar={acercar} onAlejar={alejar} onVerTodo={verTodo} />
     </>
+  );
+}
+
+export function Tablero({ zoom = false, ...contenido }: Props) {
+  const caja = useMemo(() => cajaDeMesa(contenido.mesa), [contenido.mesa]);
+  return (
+    <MarcoDelTablero caja={caja} zoom={zoom}>
+      <ContenidoDelTablero {...contenido} />
+    </MarcoDelTablero>
   );
 }

@@ -93,6 +93,7 @@ export function vistaDePrueba(cambios: Partial<Vista> = {}): Vista {
     dados: [3, 4],
     descartesPendientes: {},
     ganador: null,
+    sorteo: [],
     version: 7,
     ...cambios,
   };

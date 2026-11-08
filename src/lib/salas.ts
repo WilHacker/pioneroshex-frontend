@@ -2,11 +2,13 @@ import { z } from 'zod';
 import {
   esquemaCredencial,
   esquemaInfoDeMapa,
+  esquemaRecomendado,
   esquemaSalaAbierta,
   esquemaSalaPublica,
   type Credencial,
   type InfoDeMapa,
   type OpcionesDeSala,
+  type Recomendado,
   type SalaAbierta,
   type SalaPublica,
 } from './esquemas';
@@ -19,10 +21,24 @@ export interface OpcionesPartida extends OpcionesDeSala {
   semillaMapa?: string;
 }
 
-export async function crearSala(nombre: string, publica = false): Promise<Credencial> {
+/** Crea la sala ya con el tope de jugadores y las reglas elegidas: una sola petición. */
+export async function crearSala(
+  nombre: string,
+  publica = false,
+  reglas: OpcionesDeSala = {},
+): Promise<Credencial> {
   // `publica` solo viaja cuando es true: el servidor la toma como falsa por defecto.
-  const cuerpo = publica ? { nombre, publica } : { nombre };
+  const cuerpo = { nombre, ...(publica ? { publica } : {}), ...reglas };
   return (await llamar('/salas', { metodo: 'POST', cuerpo }, esquemaCredencial))!;
+}
+
+/** Los puntos, el tiempo y los turnos que conviene proponer para `jugadores` jugadores. */
+export async function verRecomendado(
+  jugadores: number,
+  signal?: AbortSignal,
+): Promise<Recomendado> {
+  const ruta = `/recomendado/${jugadores}`;
+  return (await llamar(ruta, { metodo: 'GET', signal }, esquemaRecomendado))!;
 }
 
 /** El catálogo de mapas con su forma y sus rangos de jugadores. */
@@ -74,4 +90,34 @@ export async function empezarSala(
 ): Promise<void> {
   const ruta = `/salas/${encodeURIComponent(salaId)}/empezar`;
   await llamar(ruta, { metodo: 'POST', cuerpo: opciones, token }, null);
+}
+
+const rutaDeSala = (salaId: string): string => `/salas/${encodeURIComponent(salaId)}`;
+
+/** Quien juega se va de la sala de espera. Si era el anfitrión, el cargo pasa al más antiguo. */
+export async function salirDeSala(salaId: string, token: string): Promise<void> {
+  await llamar(`${rutaDeSala(salaId)}/salir`, { metodo: 'POST', token }, null);
+}
+
+/** El anfitrión saca a otro jugador de la sala de espera. */
+export async function expulsarDeSala(
+  salaId: string,
+  token: string,
+  jugadorId: string,
+): Promise<void> {
+  const ruta = `${rutaDeSala(salaId)}/jugadores/${encodeURIComponent(jugadorId)}`;
+  await llamar(ruta, { metodo: 'DELETE', token }, null);
+}
+
+/** El anfitrión le pasa el cargo a otro jugador. */
+export async function cederAnfitrion(
+  salaId: string,
+  token: string,
+  jugadorId: string,
+): Promise<void> {
+  await llamar(
+    `${rutaDeSala(salaId)}/anfitrion`,
+    { metodo: 'POST', cuerpo: { jugadorId }, token },
+    null,
+  );
 }

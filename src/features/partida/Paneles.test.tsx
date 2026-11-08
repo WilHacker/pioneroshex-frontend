@@ -277,6 +277,13 @@ describe('Paleta', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Pasar' }));
     expect(alAccionar).toHaveBeenCalledWith({ tipo: 'PASAR_CONSTRUCCION_ESPECIAL' });
   });
+
+  it('con el mazo oculto, la carta de desarrollo no enseña cuántas quedan', () => {
+    paleta({ vista: vistaDePrueba({ tamanoMazo: null }) });
+    const boton = screen.getByRole('button', { name: /Carta de desarrollo/ });
+    expect(boton).toBeEnabled();
+    expect(within(boton).queryByText('25')).not.toBeInTheDocument();
+  });
 });
 
 describe('Dados', () => {
@@ -438,14 +445,16 @@ describe('Comercio', () => {
       mano?: Cantidades;
       edificios?: Vista['edificios'];
       mesa?: Mesa;
+      config?: Partial<Vista['config']>;
     } = {},
   ) {
     const alAccionar = vi.fn();
     const alCerrar = vi.fn();
+    const vista = vistaConMano(parcial.mano, parcial.edificios);
     render(
       <Comercio
         mesa={parcial.mesa ?? mesaDePrueba}
-        vista={vistaConMano(parcial.mano, parcial.edificios)}
+        vista={{ ...vista, config: { ...vista.config, ...parcial.config } }}
         acciones={parcial.acciones ?? acciones}
         nombreDe={nombreDe}
         indiceDe={indiceDe}
@@ -636,6 +645,52 @@ describe('Comercio', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Doy: añadir madera' }));
     await userEvent.click(screen.getByRole('button', { name: 'Pido: añadir trigo' }));
     expect(screen.getByRole('button', { name: 'Enviar oferta' })).toBeDisabled();
+  });
+  describe('según las reglas de comercio de la sala', () => {
+    const SOLO_BANCO: AccionDisponible[] = [
+      { tipo: 'PROPONER_TRATO', disponible: false, motivo: 'NO_PUEDES_COMERCIAR' },
+      { tipo: 'CAMBIAR_CON_BANCA', disponible: true },
+    ];
+    const TOPE: AccionDisponible[] = [
+      { tipo: 'PROPONER_TRATO', disponible: false, motivo: 'DEMASIADAS_OFERTAS' },
+      { tipo: 'CAMBIAR_CON_BANCA', disponible: true },
+    ];
+
+    it('solo banco: se abre ya en la banca, no se puede ofrecer a nadie y se explica por qué', () => {
+      abrir({ acciones: SOLO_BANCO, mano: MUCHAS, config: { modoComercio: 'SOLO_BANCO' } });
+      expect(screen.getByRole('button', { name: 'Banca' })).toHaveAttribute('aria-pressed', 'true');
+      expect(screen.getByRole('button', { name: 'Todos' })).toBeDisabled();
+      expect(screen.getByRole('status')).toHaveTextContent(/banco/i);
+    });
+
+    it('con el tope de ofertas alcanzado se explica y se puede seguir con la banca', async () => {
+      abrir({ acciones: TOPE, mano: MUCHAS });
+      expect(screen.getByRole('status')).toHaveTextContent(/ofertas/i);
+      expect(screen.getByRole('button', { name: 'Banca' })).toBeEnabled();
+    });
+
+    it('privado: no hay «Todos» y se empieza eligiendo a un jugador', () => {
+      abrir({ config: { modoComercio: 'PRIVADO' } });
+      expect(screen.queryByRole('button', { name: 'Todos' })).not.toBeInTheDocument();
+      const rivales = screen.getAllByRole('button', { name: /Ofrecer solo a/ });
+      expect(rivales[0]).toHaveAttribute('aria-pressed', 'true');
+    });
+
+    it('privado: la oferta sale dirigida al jugador elegido', async () => {
+      const { alAccionar } = abrir({ config: { modoComercio: 'PRIVADO' } });
+      await userEvent.click(screen.getByRole('button', { name: 'Doy: añadir madera' }));
+      await userEvent.click(screen.getByRole('button', { name: 'Pido: añadir mineral' }));
+      await userEvent.click(screen.getByRole('button', { name: 'Enviar oferta' }));
+      expect(alAccionar).toHaveBeenCalledWith(
+        expect.objectContaining({ tipo: 'PROPONER_TRATO', destinatario: expect.any(String) }),
+      );
+    });
+
+    it('libre: todo igual que antes, con «Todos» y sin avisos', () => {
+      abrir();
+      expect(screen.getByRole('button', { name: 'Todos' })).toHaveAttribute('aria-pressed', 'true');
+      expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    });
   });
 });
 

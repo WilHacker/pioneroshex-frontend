@@ -1,12 +1,9 @@
 import { render, screen } from '@testing-library/react';
 import { yo } from '@/lib/cuentas';
-import { ErrorApi, verResumen } from '@/lib/salas';
+import { suscribirPortada } from '@/lib/lobby';
 import { Portada } from './Portada';
 
-vi.mock('@/lib/salas', async (importarOriginal) => ({
-  ...(await importarOriginal<typeof import('@/lib/salas')>()),
-  verResumen: vi.fn(),
-}));
+vi.mock('@/lib/lobby');
 
 vi.mock('@/lib/cuentas');
 
@@ -15,7 +12,7 @@ afterEach(() => vi.resetAllMocks());
 
 describe('Portada', () => {
   it('ofrece entrar como invitado, con amigos o con cuenta', async () => {
-    vi.mocked(verResumen).mockReturnValue(new Promise(() => {}));
+    vi.mocked(suscribirPortada).mockReturnValue(vi.fn());
 
     render(<Portada tablero={<p>tablero</p>} />);
 
@@ -29,7 +26,10 @@ describe('Portada', () => {
   });
 
   it('muestra cuántas salas abiertas y jugadores hay', async () => {
-    vi.mocked(verResumen).mockResolvedValue({ salasAbiertas: 3, partidasEnCurso: 1, jugadores: 7 });
+    vi.mocked(suscribirPortada).mockImplementation((m) => {
+      m.alDatos({ salas: [], resumen: { salasAbiertas: 3, partidasEnCurso: 1, jugadores: 7 } });
+      return vi.fn();
+    });
 
     render(<Portada tablero={null} />);
 
@@ -39,7 +39,10 @@ describe('Portada', () => {
   });
 
   it('si el servidor no responde, no muestra los contadores y no se rompe', async () => {
-    vi.mocked(verResumen).mockRejectedValue(new ErrorApi(0, 'No se pudo conectar'));
+    vi.mocked(suscribirPortada).mockImplementation((m) => {
+      m.alFallar();
+      return vi.fn();
+    });
 
     render(<Portada tablero={null} />);
 
@@ -48,7 +51,7 @@ describe('Portada', () => {
   });
 
   it('con sesión iniciada muestra el nombre y lleva al perfil', async () => {
-    vi.mocked(verResumen).mockReturnValue(new Promise(() => {}));
+    vi.mocked(suscribirPortada).mockReturnValue(vi.fn());
     vi.mocked(yo).mockResolvedValue({ id: 'u1', nombre: 'Ana' });
 
     render(<Portada tablero={null} />);

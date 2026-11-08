@@ -6,11 +6,12 @@ import { useEffect, useState, useSyncExternalStore, type SyntheticEvent } from '
 import { IconoSala } from '@/components/arte/IconosPortada';
 import { useCuenta } from '@/components/useCuenta';
 import type { Credencial, SalaAbierta } from '@/lib/esquemas';
-import { crearSala, listarSalas, unirseASala } from '@/lib/salas';
+import { suscribirPortada } from '@/lib/lobby';
+import { crearSala, unirseASala } from '@/lib/salas';
 import { guardarCredencial, guardarNombre, leerNombre } from '@/lib/sesion';
+import { CrearSala } from './CrearSala';
 
 const NOMBRE_MAX = 20;
-const REFRESCO_SALAS_MS = 5000;
 
 type Pestana = 'abiertas' | 'crear' | 'codigo';
 
@@ -32,33 +33,20 @@ function useNombre(): [string, (nombre: string) => void] {
   return [escrito ?? guardado, setEscrito];
 }
 
-/** Las salas públicas que esperan jugadores; se refrescan solas. */
+/** Las salas públicas que esperan jugadores; el servidor las empuja cuando cambian. */
 function useSalasAbiertas(activo: boolean): { salas: SalaAbierta[] | null; fallo: boolean } {
   const [salas, setSalas] = useState<SalaAbierta[] | null>(null);
   const [fallo, setFallo] = useState(false);
 
   useEffect(() => {
     if (!activo) return;
-    let controlador = new AbortController();
-    const cargar = (): void => {
-      controlador.abort();
-      controlador = new AbortController();
-      listarSalas(controlador.signal).then(
-        (lista) => {
-          setSalas(lista);
-          setFallo(false);
-        },
-        () => {
-          if (!controlador.signal.aborted) setFallo(true);
-        },
-      );
-    };
-    cargar();
-    const intervalo = setInterval(cargar, REFRESCO_SALAS_MS);
-    return () => {
-      clearInterval(intervalo);
-      controlador.abort();
-    };
+    return suscribirPortada({
+      alDatos: (portada) => {
+        setSalas(portada.salas);
+        setFallo(false);
+      },
+      alFallar: () => setFallo(true),
+    });
   }, [activo]);
 
   return { salas, fallo };
@@ -136,7 +124,6 @@ export function Lobby() {
   // Con sesión iniciada el jugador es su cuenta: el servidor usa el nombre de la cuenta.
   const nombre = usuario?.nombre ?? escrito;
   const [pestana, setPestana] = useState<Pestana>('abiertas');
-  const [publica, setPublica] = useState(false);
   const [codigo, setCodigo] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [ocupado, setOcupado] = useState(false);
@@ -239,38 +226,12 @@ export function Lobby() {
         )}
 
         {pestana === 'crear' && (
-          <div className="flex flex-col items-center gap-4">
-            <fieldset className="flex gap-2">
-              <legend className="sr-only">Quién puede entrar</legend>
-              {[
-                { valor: false, etiqueta: 'Privada', ayuda: 'Solo con el enlace' },
-                { valor: true, etiqueta: 'Pública', ayuda: 'Sale en la lista de salas' },
-              ].map((o) => (
-                <button
-                  key={o.etiqueta}
-                  type="button"
-                  aria-pressed={publica === o.valor}
-                  title={o.ayuda}
-                  onClick={() => setPublica(o.valor)}
-                  className={`rounded-xl border-2 px-5 py-2 font-extrabold transition ${
-                    publica === o.valor
-                      ? 'border-azafran bg-azafran'
-                      : 'border-tinta/15 bg-white/60 text-tinta/80'
-                  }`}
-                >
-                  {o.etiqueta}
-                </button>
-              ))}
-            </fieldset>
-            <button
-              type="button"
-              disabled={ocupado || sinNombre}
-              onClick={() => void entrar(() => crearSala(nombre.trim(), publica))}
-              className={BOTON}
-            >
-              Crear sala
-            </button>
-          </div>
+          <CrearSala
+            deshabilitado={ocupado || sinNombre}
+            onCrear={(esPublica, reglas) =>
+              void entrar(() => crearSala(nombre.trim(), esPublica, reglas))
+            }
+          />
         )}
 
         {pestana === 'codigo' && (

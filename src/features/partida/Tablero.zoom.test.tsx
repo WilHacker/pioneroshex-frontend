@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { V1, mesaDePrueba, vistaDePrueba } from '@/lib/pruebas';
 import { Tablero } from './Tablero';
@@ -203,5 +203,96 @@ describe('Tablero: captura del puntero al arrastrar', () => {
     fireEvent.pointerDown(svg, { pointerId: 1, clientX: 100, clientY: 100 });
     fireEvent.pointerUp(svg, { pointerId: 1, clientX: 100, clientY: 100 });
     expect(capturar).not.toHaveBeenCalled();
+  });
+});
+
+describe('Tablero: modo rápido mientras se hace un gesto', () => {
+  const EN_GESTO = 'tablero-en-gesto';
+  /** Pasados estos milisegundos sin movimiento, el tablero vuelve a dibujarse con todo detalle. */
+  const REPOSO_MS = 300;
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('en reposo se dibuja con todo detalle', () => {
+    const { svg } = dibujar(true);
+    expect(svg).not.toHaveClass(EN_GESTO);
+  });
+
+  it('el tablero no lleva una sombra CSS: obliga a repintarlo entero en cada paso del zoom', () => {
+    const { svg } = dibujar(true);
+    expect(svg.getAttribute('class')).not.toContain('drop-shadow');
+  });
+
+  it('al girar la rueda pasa a modo rápido y vuelve a detalle al quedarse quieto', () => {
+    const { svg } = dibujar(true);
+    fireEvent.wheel(svg, { deltaY: -100, clientX: 400, clientY: 200 });
+    expect(svg).toHaveClass(EN_GESTO);
+
+    act(() => void vi.advanceTimersByTime(REPOSO_MS - 50));
+    expect(svg).toHaveClass(EN_GESTO);
+    act(() => void vi.advanceTimersByTime(100));
+    expect(svg).not.toHaveClass(EN_GESTO);
+  });
+
+  it('cada vuelta de la rueda alarga el modo rápido: mientras sigue girando no se restablece', () => {
+    const { svg } = dibujar(true);
+    for (let i = 0; i < 5; i++) {
+      fireEvent.wheel(svg, { deltaY: -100, clientX: 400, clientY: 200 });
+      act(() => void vi.advanceTimersByTime(REPOSO_MS - 100));
+    }
+    expect(svg).toHaveClass(EN_GESTO);
+  });
+
+  it('al arrastrar con la vista acercada pasa a modo rápido', () => {
+    const { svg } = dibujar(true);
+    fireEvent.wheel(svg, { deltaY: -100, clientX: 400, clientY: 200 });
+    act(() => void vi.advanceTimersByTime(REPOSO_MS + 50));
+    expect(svg).not.toHaveClass(EN_GESTO);
+
+    fireEvent.pointerDown(svg, { pointerId: 1, clientX: 400, clientY: 200 });
+    fireEvent.pointerMove(svg, { pointerId: 1, clientX: 340, clientY: 200 });
+    expect(svg).toHaveClass(EN_GESTO);
+    fireEvent.pointerUp(svg, { pointerId: 1, clientX: 340, clientY: 200 });
+    act(() => void vi.advanceTimersByTime(REPOSO_MS + 50));
+    expect(svg).not.toHaveClass(EN_GESTO);
+  });
+
+  it('al pellizcar con dos dedos pasa a modo rápido', () => {
+    const { svg } = dibujar(true);
+    fireEvent.pointerDown(svg, { pointerId: 1, clientX: 350, clientY: 200 });
+    fireEvent.pointerDown(svg, { pointerId: 2, clientX: 450, clientY: 200 });
+    fireEvent.pointerMove(svg, { pointerId: 2, clientX: 650, clientY: 200 });
+    expect(svg).toHaveClass(EN_GESTO);
+  });
+
+  it('un toque suelto que no arrastra no activa el modo rápido', () => {
+    const { svg } = dibujar(true);
+    fireEvent.pointerDown(svg, { pointerId: 1, clientX: 100, clientY: 100 });
+    fireEvent.pointerUp(svg, { pointerId: 1, clientX: 100, clientY: 100 });
+    expect(svg).not.toHaveClass(EN_GESTO);
+  });
+
+  it('los botones, que son un solo paso, no necesitan modo rápido', () => {
+    const { svg } = dibujar(true);
+    fireEvent.click(screen.getByRole('button', { name: 'Acercar' }));
+    expect(svg).not.toHaveClass(EN_GESTO);
+  });
+
+  it('sin zoom (la portada) la rueda no activa nada', () => {
+    const { svg } = dibujar(false);
+    fireEvent.wheel(svg, { deltaY: -100 });
+    expect(svg).not.toHaveClass(EN_GESTO);
+  });
+
+  it('si el tablero desaparece con el modo rápido puesto, no queda nada pendiente', () => {
+    const { svg } = dibujar(true);
+    fireEvent.wheel(svg, { deltaY: -100, clientX: 400, clientY: 200 });
+    cleanup();
+    expect(() => act(() => void vi.advanceTimersByTime(REPOSO_MS * 2))).not.toThrow();
   });
 });

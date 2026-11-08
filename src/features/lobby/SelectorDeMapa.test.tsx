@@ -22,7 +22,10 @@ describe('SelectorDeMapa', () => {
   it('ofrece el mapa automático y cada mapa del catálogo', () => {
     dibujar();
     const grupo = screen.getByRole('group', { name: 'Mapa' });
-    const botones = within(grupo).getAllByRole('button');
+    // El ⓘ de ayuda también es un botón, pero no es una carta de mapa.
+    const botones = within(grupo)
+      .getAllByRole('button')
+      .filter((b) => b.hasAttribute('aria-pressed'));
     expect(botones).toHaveLength(1 + mapasDePrueba.length);
     expect(within(grupo).getByRole('button', { name: /Automático/ })).toBeInTheDocument();
     for (const m of mapasDePrueba) {
@@ -62,7 +65,7 @@ describe('SelectorDeMapa', () => {
 
   it('quien no es anfitrión ve la elección pero no puede cambiarla', async () => {
     const { onElegir } = dibujar({ editable: false, elegido: 'grande' });
-    const botones = screen.getAllByRole('button');
+    const botones = screen.getAllByRole('button').filter((b) => b.hasAttribute('aria-pressed'));
     expect(botones.every((b) => (b as HTMLButtonElement).disabled)).toBe(true);
     expect(screen.getByRole('button', { name: /Grande/ })).toHaveAttribute('aria-pressed', 'true');
     await userEvent.setup().click(botones[0]!);
@@ -115,6 +118,7 @@ describe('SelectorDeMapa', () => {
 
   it('sin catálogo (aún cargando) solo ofrece el automático', () => {
     dibujar({ mapas: [] });
-    expect(screen.getAllByRole('button')).toHaveLength(1);
+    const cartas = screen.getAllByRole('button').filter((b) => b.hasAttribute('aria-pressed'));
+    expect(cartas).toHaveLength(1);
   });
 });

@@ -56,29 +56,37 @@ const CARTAS: readonly Descripcion[] = [
 /** Qué hace cada carta de desarrollo y cuántas lleva el mazo de esta partida. */
 export function GuiaDeDesarrollo({ jugadores, puntosVictoria }: Props) {
   const cuantas = composicionDelMazo(jugadores);
+  const total = Object.values(cuantas).reduce((suma, n) => suma + n, 0);
   return (
-    <ul className="flex flex-col gap-2.5">
-      {CARTAS.map(({ carta, nombre, imagen, texto }) => (
-        <li
-          key={carta}
-          aria-label={`${nombre} (${cuantas[carta]} cartas)`}
-          className="flex items-center gap-2.5"
-        >
-          <Image
-            src={imagen}
-            alt=""
-            width={30}
-            height={42}
-            unoptimized
-            className="shrink-0 drop-shadow"
-          />
-          <span className="min-w-0 text-sm leading-snug">
-            <span className="font-extrabold">{nombre}</span>{' '}
-            <span className="text-white/80">({cuantas[carta]} cartas)</span>
-            <span className="block text-white/95">{texto(puntosVictoria)}</span>
-          </span>
-        </li>
-      ))}
-    </ul>
+    <div className="flex flex-col gap-3">
+      <p className="text-sm leading-snug text-white/95">
+        Las cartas de desarrollo tienen habilidades especiales. Hay {total} en total en el mazo y se
+        pueden jugar antes de tirar los dados. Solo una por turno, y no la que acabas de comprar (la
+        comprada se puede jugar desde el turno siguiente).
+      </p>
+      <ul className="flex flex-col gap-2.5">
+        {CARTAS.map(({ carta, nombre, imagen, texto }) => (
+          <li
+            key={carta}
+            aria-label={`${nombre} (${cuantas[carta]} cartas)`}
+            className="flex items-center gap-2.5"
+          >
+            <Image
+              src={imagen}
+              alt=""
+              width={30}
+              height={42}
+              unoptimized
+              className="shrink-0 drop-shadow"
+            />
+            <span className="min-w-0 text-sm leading-snug">
+              <span className="font-extrabold">{nombre}</span>{' '}
+              <span className="text-white/80">({cuantas[carta]} cartas)</span>
+              <span className="block text-white/95">{texto(puntosVictoria)}</span>
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }

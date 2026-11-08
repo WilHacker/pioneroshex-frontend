@@ -1,6 +1,8 @@
 import Image from 'next/image';
+import { Ayuda } from '@/components/Ayuda';
 import type { InfoDeMapa } from '@/lib/esquemas';
 import { aptitudDeMapa, contornoDeForma, type Aptitud } from '@/lib/mapas';
+import { AYUDAS } from './ayudas';
 
 const TEXTO_APTITUD: Record<Aptitud, string> = {
   RECOMENDADO: 'Recomendado',
@@ -69,8 +71,11 @@ export function SelectorDeMapa({ mapas, elegido, jugadores, editable, onElegir }
   return (
     // `min-w-0`: un <fieldset> se ensancha por defecto hasta el ancho de su contenido y la fila de
     // cartas se saldría del panel en vez de desplazarse dentro de él.
-    <fieldset className="flex min-w-0 flex-col gap-1.5">
-      <legend className="mb-1.5 text-sm font-extrabold">Mapa</legend>
+    <fieldset aria-label="Mapa" className="flex min-w-0 flex-col gap-1.5">
+      <legend className="mb-1.5 flex items-center gap-1.5 text-sm font-extrabold">
+        Mapa
+        <Ayuda tema="Mapa">{AYUDAS.mapa}</Ayuda>
+      </legend>
       <div className="flex gap-2 overflow-x-auto pb-2">
         <button
           type="button"

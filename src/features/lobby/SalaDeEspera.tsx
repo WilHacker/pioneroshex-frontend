@@ -1,18 +1,34 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState, type SyntheticEvent } from 'react';
+import { useEffect, useRef, useState, type ReactNode, type SyntheticEvent } from 'react';
 import { IconoPersona } from '@/components/arte/IconosPortada';
 import { useCuenta } from '@/components/useCuenta';
 import { aclarar, colorDeJugador } from '@/lib/colores';
-import type { Credencial, InfoDeMapa, SalaPublica } from '@/lib/esquemas';
-import { cambiarSala, empezarSala, listarMapas, unirseASala, verSala } from '@/lib/salas';
-import { enlaceDeSala, guardarCredencial, guardarNombre, leerCredencial } from '@/lib/sesion';
+import type { Credencial, InfoDeMapa } from '@/lib/esquemas';
+import { suscribirSala, type SalaEnVivo } from '@/lib/lobby';
+import {
+  cambiarSala,
+  cederAnfitrion,
+  empezarSala,
+  expulsarDeSala,
+  listarMapas,
+  salirDeSala,
+  unirseASala,
+} from '@/lib/salas';
+import {
+  enlaceDeSala,
+  guardarCredencial,
+  guardarNombre,
+  leerCredencial,
+  olvidarCredencial,
+} from '@/lib/sesion';
 import { OpcionesSala, type CambiosDeSala } from './OpcionesSala';
 import { SelectorDeMapa } from './SelectorDeMapa';
 
-const CADA_MS = 2000;
 const MINIMO_JUGADORES = 2;
+const MENSAJE_SALA_INEXISTENTE = 'La sala no existe';
+const MENSAJE_SIN_CONEXION = 'No se pudo mantener la conexión con la sala';
 const ASIENTOS_VISIBLES_MIN = 4;
 const AVISO_COPIADO_MS = 1800;
 
@@ -33,10 +49,23 @@ const mensajeDe = (e: unknown): string => (e instanceof Error ? e.message : 'Alg
 const BOTON_PRINCIPAL =
   'rounded-full bg-azafran px-8 py-3 text-xl font-extrabold text-tinta shadow-lg ring-4 ring-azafran-claro/50 transition enabled:hover:scale-105 enabled:hover:bg-azafran-claro disabled:opacity-50 disabled:ring-0';
 
-function Asiento({ nombre, indice, yo }: { nombre: string; indice: number; yo: boolean }) {
+type AsientoProps = {
+  nombre: string;
+  indice: number;
+  yo: boolean;
+  /** Sin pestaña abierta en esta sala: se ve la palabra, el color solo acompaña. */
+  desconectado: boolean;
+  /** Botones del anfitrión para este jugador (expulsar, ceder el cargo). */
+  acciones?: ReactNode;
+};
+
+function Asiento({ nombre, indice, yo, desconectado, acciones }: AsientoProps) {
   const color = colorDeJugador(indice);
   return (
-    <li className="flex flex-col items-center gap-1" title={nombre}>
+    <li
+      className={`flex flex-col items-center gap-1 ${desconectado ? 'opacity-60' : ''}`}
+      title={nombre}
+    >
       <span
         aria-hidden="true"
         style={{ background: `linear-gradient(145deg, ${aclarar(color, 0.25)}, ${color})` }}
@@ -45,6 +74,8 @@ function Asiento({ nombre, indice, yo }: { nombre: string; indice: number; yo: b
         {nombre.charAt(0).toUpperCase()}
       </span>
       <span className="max-w-20 truncate text-sm font-bold">{nombre}</span>
+      {desconectado && <span className="text-xs font-bold text-tinta/70">Desconectado</span>}
+      {acciones}
     </li>
   );
 }
@@ -60,34 +91,106 @@ function AsientoVacio() {
   );
 }
 
-/** El código en grande y un botón que copia el enlace de invitación. */
-function Invitar({ salaId }: { salaId: string }) {
-  const [copiado, setCopiado] = useState(false);
+const CLASE_COPIAR =
+  'rounded-full bg-mar-laguna px-4 py-2 font-extrabold text-white transition hover:bg-mar-laguna/85';
+
+type CopiarProps = { texto: string; etiqueta: string; copiado: string; ayuda: string };
+
+/** Un botón que copia `texto` y avisa un momento; sin permiso para el portapapeles no hace nada. */
+function BotonCopiar({ texto, etiqueta, copiado, ayuda }: CopiarProps) {
+  const [hecho, setHecho] = useState(false);
 
   async function copiar(): Promise<void> {
     try {
-      await navigator.clipboard.writeText(enlaceDeSala(window.location.origin, salaId));
-      setCopiado(true);
-      setTimeout(() => setCopiado(false), AVISO_COPIADO_MS);
+      await navigator.clipboard.writeText(texto);
+      setHecho(true);
+      setTimeout(() => setHecho(false), AVISO_COPIADO_MS);
     } catch {
       // Sin permiso para el portapapeles, el código a la vista sigue sirviendo.
     }
   }
 
   return (
-    <div className="flex items-center justify-center gap-3">
+    <button type="button" onClick={() => void copiar()} title={ayuda} className={CLASE_COPIAR}>
+      {hecho ? copiado : etiqueta}
+    </button>
+  );
+}
+
+/** El código en grande, con un botón para copiarlo y otro para copiar el enlace de invitación. */
+function Invitar({ salaId }: { salaId: string }) {
+  return (
+    <div className="flex flex-wrap items-center justify-center gap-3">
       <span className="rounded-xl bg-tinta px-4 py-2 font-mono text-2xl font-extrabold tracking-widest text-espuma">
         {salaId}
       </span>
+      <BotonCopiar
+        texto={salaId}
+        etiqueta="Copiar código"
+        copiado="¡Código copiado!"
+        ayuda="Copiar solo el código de la sala, para escribirlo en «Unirse»"
+      />
+      <BotonCopiar
+        texto={enlaceDeSala(window.location.origin, salaId)}
+        etiqueta="Copiar enlace"
+        copiado="¡Copiado!"
+        ayuda="Copiar el enlace de invitación: entra directo a la sala"
+      />
+    </div>
+  );
+}
+
+const BOTON_ASIENTO =
+  'rounded-full bg-tinta/10 px-2 py-0.5 text-xs font-extrabold transition hover:bg-tinta/20 disabled:opacity-40';
+
+/** Lo que el anfitrión puede hacer con otro jugador antes de empezar. */
+function AccionesDeAnfitrion({
+  nombre,
+  deshabilitado,
+  onCeder,
+  onExpulsar,
+}: {
+  nombre: string;
+  deshabilitado: boolean;
+  onCeder: () => void;
+  onExpulsar: () => void;
+}) {
+  return (
+    <span className="flex gap-1">
       <button
         type="button"
-        onClick={() => void copiar()}
-        title="Copiar el enlace de invitación"
-        className="rounded-full bg-mar-laguna px-4 py-2 font-extrabold text-white transition hover:bg-mar-laguna/85"
+        disabled={deshabilitado}
+        aria-label={`Hacer anfitrión a ${nombre}`}
+        title="Pasarle el cargo de anfitrión"
+        onClick={onCeder}
+        className={BOTON_ASIENTO}
       >
-        {copiado ? '¡Copiado!' : 'Copiar enlace'}
+        ★
       </button>
-    </div>
+      <button
+        type="button"
+        disabled={deshabilitado}
+        aria-label={`Expulsar a ${nombre}`}
+        title="Sacarlo de la sala"
+        onClick={onExpulsar}
+        className={`${BOTON_ASIENTO} hover:bg-coral/30`}
+      >
+        ✕
+      </button>
+    </span>
+  );
+}
+
+/** Pantalla para quien ya no está en la sala (salió o lo sacaron). */
+function SinSala({ titulo, detalle }: { titulo: string; detalle: string }) {
+  return (
+    <main className="mar flex flex-1 flex-col items-center justify-center gap-3 p-4 text-center text-white">
+      <h1 className="text-2xl font-extrabold">{titulo}</h1>
+      <p className="text-white/80">{detalle}</p>
+      <Link href="/jugar" className="rounded-full bg-azafran px-6 py-2.5 font-extrabold text-tinta">
+        Volver a jugar
+      </Link>
+    </main>
   );
 }
 
@@ -95,36 +198,47 @@ export function SalaDeEspera({ salaId, onEmpezada }: Props) {
   // Antes de cargar la sala se muestra siempre "Cargando", así que leer el almacenamiento aquí no
   // hace que el primer render del navegador difiera del del servidor.
   const [credencial, setCredencial] = useState<Credencial | null>(() => leerCredencial(salaId));
-  const [sala, setSala] = useState<SalaPublica | null>(null);
+  const [sala, setSala] = useState<SalaEnVivo | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [escrito, setNombre] = useState('');
   const [ocupado, setOcupado] = useState(false);
+  const [salio, setSalio] = useState(false);
+  const [fueraDeLaSala, setFueraDeLaSala] = useState(false);
+  // Me he visto en la lista de jugadores: solo entonces su ausencia significa que me sacaron.
+  const meVi = useRef(false);
   const [mapas, setMapas] = useState<InfoDeMapa[]>([]);
   const [mapasFallaron, setMapasFallaron] = useState(false);
   const { usuario } = useCuenta();
   // Con sesión iniciada el servidor ya usa el nombre de la cuenta: se manda ese para que coincida.
   const nombre = usuario?.nombre ?? escrito;
 
+  const miId = credencial?.jugadorId;
+  const token = credencial?.token;
+  // La sala llega por socket cada vez que cambia (nadie pregunta). Con mi token el servidor me
+  // cuenta como conectado; al entrar o salir de la sala cambia el token y la suscripción se rehace.
   useEffect(() => {
-    const controlador = new AbortController();
-    const consultar = (): void => {
-      verSala(salaId, controlador.signal).then(
-        (nueva) => {
+    // En el primer estado también cuenta: una credencial vieja de alguien que ya no está.
+    let primera = true;
+    return suscribirSala(
+      { salaId, token },
+      {
+        alEstado: (nueva) => {
+          const dentro = miId !== undefined && nueva.jugadores.some((j) => j.id === miId);
+          if (dentro) meVi.current = true;
+          if (miId !== undefined && !nueva.empezada && !dentro && (meVi.current || primera)) {
+            olvidarCredencial(salaId);
+            setFueraDeLaSala(true);
+          }
+          primera = false;
           setSala(nueva);
           setError(null);
         },
-        (e: unknown) => {
-          if (!controlador.signal.aborted) setError(mensajeDe(e));
-        },
-      );
-    };
-    consultar();
-    const temporizador = setInterval(consultar, CADA_MS);
-    return () => {
-      controlador.abort();
-      clearInterval(temporizador);
-    };
-  }, [salaId]);
+        alCerrarse: () => setError(MENSAJE_SALA_INEXISTENTE),
+        alRechazar: (motivo) =>
+          setError(motivo === 'SALA_NO_EXISTE' ? MENSAJE_SALA_INEXISTENTE : MENSAJE_SIN_CONEXION),
+      },
+    );
+  }, [salaId, miId, token]);
 
   // El catálogo no cambia mientras la sala espera: se pide una sola vez.
   useEffect(() => {
@@ -148,6 +262,8 @@ export function SalaDeEspera({ salaId, onEmpezada }: Props) {
       const nueva = await unirseASala(salaId, nombre.trim());
       guardarNombre(nombre);
       guardarCredencial(nueva);
+      meVi.current = false;
+      setFueraDeLaSala(false);
       setCredencial(nueva);
       setError(null);
     } catch (e: unknown) {
@@ -162,6 +278,34 @@ export function SalaDeEspera({ salaId, onEmpezada }: Props) {
     setOcupado(true);
     try {
       await empezarSala(salaId, credencial.token);
+      setError(null);
+    } catch (e: unknown) {
+      setError(mensajeDe(e));
+    } finally {
+      setOcupado(false);
+    }
+  }
+
+  async function salir(): Promise<void> {
+    if (!credencial) return;
+    setOcupado(true);
+    try {
+      await salirDeSala(salaId, credencial.token);
+      olvidarCredencial(salaId);
+      setSalio(true);
+    } catch (e: unknown) {
+      setError(mensajeDe(e));
+    } finally {
+      setOcupado(false);
+    }
+  }
+
+  /** Una acción del anfitrión sobre otro jugador; el cambio llega solo por el socket. */
+  async function sobreJugador(accion: typeof expulsarDeSala, jugadorId: string): Promise<void> {
+    if (!credencial) return;
+    setOcupado(true);
+    try {
+      await accion(salaId, credencial.token, jugadorId);
       setError(null);
     } catch (e: unknown) {
       setError(mensajeDe(e));
@@ -194,6 +338,15 @@ export function SalaDeEspera({ salaId, onEmpezada }: Props) {
     </p>
   );
 
+  if (salio) {
+    return <SinSala titulo="Saliste de la sala" detalle="Puedes volver a entrar cuando quieras." />;
+  }
+  if (fueraDeLaSala) {
+    return (
+      <SinSala titulo="Te sacaron de la sala" detalle="El anfitrión te sacó antes de empezar." />
+    );
+  }
+
   if (!sala) {
     return (
       <div className="mar flex flex-1 flex-col items-center justify-center gap-3 p-4 text-white">
@@ -219,9 +372,20 @@ export function SalaDeEspera({ salaId, onEmpezada }: Props) {
         <Link href="/" className="text-2xl font-extrabold tracking-tight">
           PionerosHex
         </Link>
-        <Link href="/jugar" className="font-bold text-white/80 underline">
-          Salir
-        </Link>
+        {credencial && !sala.empezada ? (
+          <button
+            type="button"
+            disabled={ocupado}
+            onClick={() => void salir()}
+            className="font-bold text-white/80 underline disabled:opacity-50"
+          >
+            Salir de la sala
+          </button>
+        ) : (
+          <Link href="/jugar" className="font-bold text-white/80 underline">
+            Salir
+          </Link>
+        )}
       </header>
 
       <section
@@ -243,6 +407,17 @@ export function SalaDeEspera({ salaId, onEmpezada }: Props) {
               nombre={j.id === sala.anfitrion ? `${j.nombre} ★` : j.nombre}
               indice={i}
               yo={j.id === credencial?.jugadorId}
+              desconectado={!sala.conectados.includes(j.id)}
+              acciones={
+                soyAnfitrion && !sala.empezada && j.id !== sala.anfitrion ? (
+                  <AccionesDeAnfitrion
+                    nombre={j.nombre}
+                    deshabilitado={ocupado}
+                    onCeder={() => void sobreJugador(cederAnfitrion, j.id)}
+                    onExpulsar={() => void sobreJugador(expulsarDeSala, j.id)}
+                  />
+                ) : undefined
+              }
             />
           ))}
           {Array.from({ length: asientosVacios }, (_, i) => (

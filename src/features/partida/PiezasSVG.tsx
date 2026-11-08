@@ -114,6 +114,8 @@ type PuertoProps = {
   tipo: 'GENERICO' | Recurso;
   /** En qué vértices (en el orden de `vertices`) tengo una casa: ese muelle es el que me conecta. */
   conectados?: readonly [boolean, boolean];
+  /** Dónde va el centro de la etiqueta; por defecto, justo sobre o bajo el barco. */
+  etiquetaEn?: Punto;
 };
 
 const BARCO: Record<PuertoProps['tipo'], string> = {
@@ -131,6 +133,18 @@ const TAMANO_BARCO = 1.05;
 /** Qué tan lejos del centro del barco, arriba o abajo, va la etiqueta con la razón de cambio. */
 const DISTANCIA_ETIQUETA = 0.68;
 const ALTO_ETIQUETA = 0.42;
+
+/** Lo que ocupa la etiqueta de un puerto (para repartirlas sin que se pisen). */
+export const medidasDeEtiqueta = (tipo: PuertoProps['tipo']) => ({
+  ancho: tipo === 'GENERICO' ? 0.74 : 1.2,
+  alto: ALTO_ETIQUETA,
+});
+
+/** Sitio habitual de la etiqueta: centrada sobre el barco (si mira hacia arriba) o debajo. */
+export const etiquetaHabitual = (mar: Punto, afuera: Punto): Punto => ({
+  x: mar.x,
+  y: mar.y + (afuera.y < 0 ? -1 : 1) * DISTANCIA_ETIQUETA,
+});
 
 type MuelleProps = { desde: Punto; hasta: Punto; conectado: boolean };
 
@@ -169,7 +183,7 @@ function Muelle({ desde, hasta, conectado }: MuelleProps) {
  */
 function EtiquetaDePuerto({ tipo, conectado }: { tipo: PuertoProps['tipo']; conectado: boolean }) {
   const razon = tipo === 'GENERICO' ? '3:1' : '2:1';
-  const ancho = tipo === 'GENERICO' ? 0.74 : 1.2;
+  const { ancho } = medidasDeEtiqueta(tipo);
   const que =
     tipo === 'GENERICO'
       ? 'Puerto: cambia 3 cartas iguales por 1 de lo que quieras'
@@ -214,9 +228,16 @@ function EtiquetaDePuerto({ tipo, conectado }: { tipo: PuertoProps['tipo']; cone
  * Un puerto: el barco en el mar, un muelle a cada vértice que protege y lo que acepta. Para usarlo
  * hace falta una casa en uno de sus dos vértices: ese muelle se resalta.
  */
-export function Puerto({ vertices, mar, afuera, tipo, conectados = SIN_CONECTAR }: PuertoProps) {
+export function Puerto({
+  vertices,
+  mar,
+  afuera,
+  tipo,
+  conectados = SIN_CONECTAR,
+  etiquetaEn,
+}: PuertoProps) {
   // Centrada sobre el barco (nunca a un lado): así ocupa poco ancho y el tablero necesita menos margen.
-  const etiqueta = { x: mar.x, y: mar.y + (afuera.y < 0 ? -1 : 1) * DISTANCIA_ETIQUETA };
+  const etiqueta = etiquetaEn ?? etiquetaHabitual(mar, afuera);
   return (
     <g>
       <Muelle desde={vertices[0]} hasta={mar} conectado={conectados[0]} />

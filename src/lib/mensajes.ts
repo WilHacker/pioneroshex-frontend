@@ -39,7 +39,8 @@ const MOTIVOS: Record<string, string> = {
   INTERCAMBIO_SOLAPADO: 'No puedes pedir y ofrecer el mismo recurso',
   TRATO_NO_DIRIGIDO_A_TI: 'Ese trato no es para ti',
   YA_RECHAZADO: 'Ya rechazaste ese trato',
-  NO_PUEDES_COMERCIAR: 'No puedes comerciar ahora',
+  NO_PUEDES_COMERCIAR: 'En esta partida solo se puede comerciar con el banco',
+  DEMASIADAS_OFERTAS: 'Ya hiciste todas las ofertas que se permiten en este turno',
   MAZO_AGOTADO: 'No quedan cartas de desarrollo',
   NO_TIENES_ESA_CARTA: 'No tienes esa carta (o la compraste este turno)',
   CARTA_COMPRADA_ESTE_TURNO: 'No puedes jugar una carta que compraste este turno',
@@ -138,8 +139,12 @@ export function describirEvento(e: EventoJuego, nombre: (id: string) => string):
       return `${quien} pasó en la construcción especial`;
     case 'TURNO_TERMINADO':
       return `${quien} terminó su turno`;
+    case 'JUGADOR_ABANDONO':
+      return `${quien} abandonó la partida`;
     case 'PARTIDA_GANADA':
-      return `${quien} ganó la partida con ${numero(e.puntos)} puntos`;
+      return e.porAbandono === true
+        ? `${quien} ganó la partida porque los demás abandonaron`
+        : `${quien} ganó la partida con ${numero(e.puntos)} puntos`;
     default:
       return null;
   }

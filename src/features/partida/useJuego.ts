@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { conectar, type Conexion, type EstadoConexion } from '@/lib/conexion';
-import type { AccionDisponible, EventoJuego, Mesa, Sitios, Vista } from '@/lib/esquemas';
+import type { AccionDisponible, EventoJuego, Mesa, Presencia, Sitios, Vista } from '@/lib/esquemas';
 import { textoDeMotivo } from '@/lib/mensajes';
 import { sumaDeDados } from './efectos';
 
@@ -29,6 +29,8 @@ export interface Juego {
   readonly resaltado: number | null;
   /** Hora (de este navegador) en que se acaba el tiempo del turno, o `null` si no hay límite. */
   readonly vence: number | null;
+  /** Quién está conectado y a quién juega el piloto; `null` si el servidor aún no lo ha dicho. */
+  readonly presencia: Presencia | null;
   /** Manda una acción. Devuelve `null` si se aceptó, o el motivo en español si no. */
   readonly enviar: (accion: object) => Promise<string | null>;
 }
@@ -43,6 +45,7 @@ export function useJuego(salaId: string, token: string): Juego {
   const [tiradas, setTiradas] = useState(0);
   const [resaltado, setResaltado] = useState<number | null>(null);
   const [vence, setVence] = useState<number | null>(null);
+  const [presencia, setPresencia] = useState<Presencia | null>(null);
   const actual = useRef<Conexion | null>(null);
   const apagarResaltado = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
@@ -52,6 +55,7 @@ export function useJuego(salaId: string, token: string): Juego {
       {
         alInicio: (inicio) => {
           setRechazo(null);
+          setPresencia(inicio.presencia ?? null);
           setVence(inicio.reloj ? Date.now() + inicio.reloj : null);
           setDatos({
             mesa: inicio.mesa,
@@ -75,6 +79,7 @@ export function useJuego(salaId: string, token: string): Juego {
             apagarResaltado.current = setTimeout(() => setResaltado(null), RESALTADO_MS);
           }
         },
+        alPresencia: setPresencia,
         alRechazar: setRechazo,
         alCambiarEstado: setConexionEstado,
       },
@@ -93,5 +98,16 @@ export function useJuego(salaId: string, token: string): Juego {
     return respuesta.ok ? null : textoDeMotivo(respuesta.motivo);
   }, []);
 
-  return { conexion, rechazo, datos, eventos, ultimos, tiradas, resaltado, vence, enviar };
+  return {
+    conexion,
+    rechazo,
+    datos,
+    eventos,
+    ultimos,
+    tiradas,
+    resaltado,
+    vence,
+    presencia,
+    enviar,
+  };
 }

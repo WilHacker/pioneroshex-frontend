@@ -26,7 +26,8 @@ type CartaProps = {
   /** Lo que lee un lector de pantalla: toda la información de la carta. */
   descripcion: string;
   imagen: string;
-  cantidad: number;
+  /** `null`: la cantidad es secreta (regla «ocultar banco»): no se dibuja ningún número. */
+  cantidad: number | null;
   /** Se pone rojo y apaga la carta cuando casi no quedan. */
   agotandose?: boolean;
   agotada?: boolean;
@@ -55,11 +56,13 @@ function CartaDelBanco({
         unoptimized
         className={`h-auto w-full max-w-11 drop-shadow-md ${agotada ? 'opacity-30 grayscale' : ''}`}
       />
-      <span
-        className={`absolute -top-1.5 -right-0.5 z-10 flex min-w-5 items-center justify-center rounded-full px-1 text-[0.7rem] leading-5 font-extrabold text-white ring-2 ring-white ${agotandose ? 'bg-coral' : 'bg-[#2d6bd0]'}`}
-      >
-        {cantidad}
-      </span>
+      {cantidad !== null && (
+        <span
+          className={`absolute -top-1.5 -right-0.5 z-10 flex min-w-5 items-center justify-center rounded-full px-1 text-[0.7rem] leading-5 font-extrabold text-white ring-2 ring-white ${agotandose ? 'bg-coral' : 'bg-[#2d6bd0]'}`}
+        >
+          {cantidad}
+        </span>
+      )}
       {agotada && (
         <span className="absolute top-1/3 rounded bg-black/70 px-1 text-[10px] font-bold text-white uppercase">
           agotado
@@ -127,17 +130,25 @@ export function Banco({ vista }: Props) {
             key={r}
             recurso={r}
             imagen={CARTA[r]}
-            cantidad={vista.banco[r]}
-            descripcion={`${vista.banco[r]} de ${NOMBRE_RECURSO[r]} en el banco`}
-            agotandose={vista.banco[r] <= POCAS_CARTAS}
-            agotada={vista.banco[r] === 0}
+            cantidad={vista.banco?.[r] ?? null}
+            descripcion={
+              vista.banco
+                ? `${vista.banco[r]} de ${NOMBRE_RECURSO[r]} en el banco`
+                : `${NOMBRE_RECURSO[r]} en el banco: cantidad oculta`
+            }
+            agotandose={vista.banco !== null && vista.banco[r] <= POCAS_CARTAS}
+            agotada={vista.banco?.[r] === 0}
           />
         ))}
         <CartaDelBanco
           imagen="/cartas/reverso-desarrollo.svg"
           cantidad={vista.tamanoMazo}
-          descripcion={`${vista.tamanoMazo} cartas de desarrollo en el mazo`}
-          agotandose={vista.tamanoMazo <= POCAS_CARTAS}
+          descripcion={
+            vista.tamanoMazo === null
+              ? 'Cartas de desarrollo en el mazo: cantidad oculta'
+              : `${vista.tamanoMazo} cartas de desarrollo en el mazo`
+          }
+          agotandose={vista.tamanoMazo !== null && vista.tamanoMazo <= POCAS_CARTAS}
           boton={{
             abierta: guiaAbierta,
             controla: idGuia,

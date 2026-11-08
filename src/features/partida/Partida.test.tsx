@@ -40,6 +40,7 @@ function juego({ vista, acciones, sitios, ...resto }: Opciones = {}): Juego {
     tiradas: 0,
     resaltado: null,
     vence: null,
+    presencia: null,
     enviar,
     datos: {
       mesa: mesaDePrueba,
@@ -390,6 +391,28 @@ describe('Partida: cartas de desarrollo', () => {
     });
   });
 
+  it.each(['PRE_TIRADA', 'FASE_PRINCIPAL'] as const)(
+    'las cartas se pueden jugar en la fase %s (antes de tirar y en la principal)',
+    (fase) => {
+      mostrar(juego({ vista: { ...conCartas(['CABALLERO', 'MONOPOLIO']), fase } }));
+      expect(screen.getByRole('button', { name: /Jugar Caballero/ })).toBeEnabled();
+      expect(screen.getByRole('button', { name: /Jugar Monopolio/ })).toBeEnabled();
+    },
+  );
+
+  it.each(['DESCARTE', 'MOVER_LADRON'] as const)(
+    'en la fase %s las cartas no se pueden jugar',
+    (fase) => {
+      mostrar(juego({ vista: { ...conCartas(['CABALLERO']), fase } }));
+      expect(screen.getByRole('button', { name: /Jugar Caballero/ })).toBeDisabled();
+    },
+  );
+
+  it('si no es mi turno no se pueden jugar, aunque sea antes de tirar', () => {
+    mostrar(juego({ vista: { ...conCartas(['CABALLERO']), fase: 'PRE_TIRADA', turnoDe: 'j2' } }));
+    expect(screen.getByRole('button', { name: /Jugar Caballero/ })).toBeDisabled();
+  });
+
   it('el monopolio se juega eligiendo un recurso con una carta', async () => {
     mostrar(juego({ vista: conCartas(['MONOPOLIO']) }));
     await userEvent.click(screen.getByRole('button', { name: /Jugar Monopolio/ }));
@@ -499,5 +522,108 @@ describe('Partida: reloj de turno', () => {
     mostrar(juego({ vence: null }));
 
     expect(screen.queryByRole('timer')).not.toBeInTheDocument();
+  });
+});
+
+describe('Partida: abandonar', () => {
+  const abrirConfirmacion = async () => {
+    const usuario = userEvent.setup();
+    await usuario.click(screen.getByRole('button', { name: 'Abandonar la partida' }));
+    return usuario;
+  };
+
+  it('mientras se juega hay un botón para abandonar, no un enlace de salida directa', () => {
+    mostrar(juego());
+    expect(screen.getByRole('button', { name: 'Abandonar la partida' })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Salir' })).not.toBeInTheDocument();
+  });
+
+  it('pide confirmación y explica qué pasa antes de abandonar', async () => {
+    mostrar(juego());
+    await abrirConfirmacion();
+
+    const aviso = screen.getByRole('alertdialog');
+    expect(aviso).toHaveTextContent(/piloto automático/i);
+    expect(enviar).not.toHaveBeenCalled();
+  });
+
+  it('«Seguir jugando» cierra el aviso sin hacer nada', async () => {
+    mostrar(juego());
+    const usuario = await abrirConfirmacion();
+    await usuario.click(screen.getByRole('button', { name: 'Seguir jugando' }));
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+    expect(enviar).not.toHaveBeenCalled();
+  });
+
+  it('Escape también lo cierra', async () => {
+    mostrar(juego());
+    const usuario = await abrirConfirmacion();
+    await usuario.keyboard('{Escape}');
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+  });
+
+  it('confirmar manda ABANDONAR al servidor', async () => {
+    enviar.mockResolvedValue(null);
+    mostrar(juego());
+    const usuario = await abrirConfirmacion();
+    await usuario.click(screen.getByRole('button', { name: 'Sí, abandonar' }));
+    expect(enviar).toHaveBeenCalledWith({ tipo: 'ABANDONAR' });
+  });
+
+  it('si el servidor lo rechaza, se avisa y el aviso de confirmación se cierra', async () => {
+    enviar.mockResolvedValue('No se pudo abandonar');
+    mostrar(juego());
+    const usuario = await abrirConfirmacion();
+    await usuario.click(screen.getByRole('button', { name: 'Sí, abandonar' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('No se pudo abandonar');
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+  });
+
+  it('cuando el servidor dice que ya abandonaste, lo ves y puedes volver al inicio', () => {
+    mostrar(juego({ presencia: { conectados: ['j2'], piloto: ['j1'], abandonaron: ['j1'] } }));
+    expect(screen.getByText('Abandonaste la partida')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Volver al inicio' })).toHaveAttribute('href', '/');
+  });
+
+  it('con la partida terminada ya no hay nada que abandonar: queda el enlace de salida', () => {
+    mostrar(juego({ vista: vistaDePrueba({ fase: 'FIN', ganador: 'j2', turnoDe: null }) }));
+    expect(screen.queryByRole('button', { name: 'Abandonar la partida' })).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Salir' })).toHaveAttribute('href', '/');
+  });
+});
+
+describe('Partida: sorteo del orden de turno', () => {
+  const SORTEO = [
+    [
+      { jugador: 'j1', dados: [4, 5] as [number, number] },
+      { jugador: 'j2', dados: [1, 2] as [number, number] },
+    ],
+  ];
+  const conSorteo = () => juego({ vista: vistaDePrueba({ sorteo: SORTEO }) });
+
+  beforeEach(() => sessionStorage.clear());
+
+  it('si el orden se sorteó con dados, se enseña el sorteo al entrar', () => {
+    mostrar(conSorteo());
+    expect(screen.getByRole('dialog', { name: 'Sorteo del orden de turno' })).toBeInTheDocument();
+  });
+
+  it('sin sorteo no sale nada', () => {
+    mostrar(juego());
+    expect(screen.queryByRole('dialog', { name: 'Sorteo del orden de turno' })).toBeNull();
+  });
+
+  it('al cerrarlo no vuelve a salir, ni siquiera al recargar la pantalla', async () => {
+    const usuario = userEvent.setup();
+    const { unmount } = render(<></>);
+    unmount();
+    mostrar(conSorteo());
+    await usuario.click(screen.getByRole('button', { name: 'Saltar' }));
+    await usuario.click(screen.getByRole('button', { name: '¡A jugar!' }));
+    expect(screen.queryByRole('dialog', { name: 'Sorteo del orden de turno' })).toBeNull();
+
+    document.body.innerHTML = '';
+    mostrar(conSorteo());
+    expect(screen.queryByRole('dialog', { name: 'Sorteo del orden de turno' })).toBeNull();
   });
 });

@@ -7,6 +7,8 @@ const describir = (e: Record<string, unknown> & { tipo: string }): string | null
 describe('textoDeMotivo', () => {
   it('traduce los motivos conocidos y no inventa los desconocidos', () => {
     expect(textoDeMotivo('NO_ES_TU_TURNO')).toBe('No es tu turno');
+    expect(textoDeMotivo('DEMASIADAS_OFERTAS')).toMatch(/ofertas/i);
+    expect(textoDeMotivo('NO_PUEDES_COMERCIAR')).toMatch(/banco/i);
     expect(textoDeMotivo('MOTIVO_NUEVO')).toBe('No se pudo hacer esa jugada (MOTIVO_NUEVO)');
   });
 });
@@ -68,6 +70,11 @@ describe('describirEvento', () => {
     ],
     [{ tipo: 'TURNO_TERMINADO', jugador: 'j1' }, 'Ana terminó su turno'],
     [{ tipo: 'PARTIDA_GANADA', jugador: 'j1', puntos: 10 }, 'Ana ganó la partida con 10 puntos'],
+    [{ tipo: 'JUGADOR_ABANDONO', jugador: 'j2' }, 'Beto abandonó la partida'],
+    [
+      { tipo: 'PARTIDA_GANADA', jugador: 'j1', puntos: 4, porAbandono: true },
+      'Ana ganó la partida porque los demás abandonaron',
+    ],
   ])('describe %j', (evento, esperado) => {
     expect(describir(evento)).toBe(esperado);
   });

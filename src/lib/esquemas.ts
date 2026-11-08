@@ -87,7 +87,16 @@ export const FASES = [
 export type Fase = (typeof FASES)[number];
 
 export const esquemaVista = z.object({
-  config: z.object({ puntosVictoria: z.number() }),
+  config: z.object({
+    puntosVictoria: z.number(),
+    ordenDeTurno: z.enum(['ALEATORIO', 'TIRADA', 'ENTRADA']).optional(),
+    ladronAmistoso: z.boolean().optional(),
+    modoComercio: z.enum(['LIBRE', 'PRIVADO', 'SOLO_BANCO']).optional(),
+    maxOfertasPorTurno: z.number().optional(),
+    arranqueProtegido: z.boolean().optional(),
+    ocultarBanco: z.boolean().optional(),
+    manosVisibles: z.boolean().optional(),
+  }),
   yo: z.string().nullable(),
   jugadores: z.array(esquemaJugadorVista),
   fase: z.enum(FASES),
@@ -99,8 +108,9 @@ export const esquemaVista = z.object({
     z.object({ dueno: z.string(), tipo: z.enum(['POBLADO', 'CIUDAD']) }),
   ),
   caminos: z.record(z.string(), z.string()),
-  banco: esquemaCantidades,
-  tamanoMazo: z.number(),
+  /** `null` con la regla «ocultar banco»: el servidor no lo manda. */
+  banco: esquemaCantidades.nullable(),
+  tamanoMazo: z.number().nullable(),
   granEjercito: z.string().nullable(),
   granRuta: z.string().nullable(),
   longitudGranRuta: z.number(),
@@ -108,6 +118,10 @@ export const esquemaVista = z.object({
   dados: z.tuple([z.number(), z.number()]).nullable(),
   descartesPendientes: z.record(z.string(), z.number()),
   ganador: z.string().nullable(),
+  /** El sorteo del orden de turno por dados, ronda a ronda (vacío si no se sorteó). */
+  sorteo: z.array(
+    z.array(z.object({ jugador: z.string(), dados: z.tuple([z.number(), z.number()]) })),
+  ),
   version: z.number(),
 });
 export type Vista = z.infer<typeof esquemaVista>;
@@ -144,6 +158,15 @@ export const esquemaNotificacion = z.object({
 });
 export type Notificacion = z.infer<typeof esquemaNotificacion>;
 
+/** Quién está conectado y a quién juega el piloto automático (ids de jugador). */
+export const esquemaPresencia = z.object({
+  conectados: z.array(z.string()),
+  piloto: z.array(z.string()),
+  /** Quienes dejaron la partida a propósito. */
+  abandonaron: z.array(z.string()),
+});
+export type Presencia = z.infer<typeof esquemaPresencia>;
+
 export const esquemaInicio = z.object({
   jugadorId: z.string(),
   mesa: esquemaMesa,
@@ -151,6 +174,7 @@ export const esquemaInicio = z.object({
   acciones: z.array(esquemaAccionDisponible),
   sitios: esquemaSitios,
   reloj: z.number().nullish(),
+  presencia: esquemaPresencia.optional(),
 });
 export type Inicio = z.infer<typeof esquemaInicio>;
 
@@ -180,13 +204,32 @@ export const esquemaSalaPublica = z.object({
     mapa: z.string().nullable().optional(),
     puntosVictoria: z.number().optional(),
     turnRuleMode: z.enum(['A', 'B']).optional(),
-    modoDados: z.enum(['AZAR', 'EQUILIBRADO']).optional(),
+    modoDados: z.enum(['AZAR', 'EQUILIBRADO', 'BARAJA', 'SIN_RACHAS']).optional(),
+    arranqueProtegido: z.boolean().optional(),
+    ocultarBanco: z.boolean().optional(),
+    manosVisibles: z.boolean().optional(),
+    ordenDeTurno: z.enum(['ALEATORIO', 'TIRADA', 'ENTRADA']).optional(),
+    ladronAmistoso: z.boolean().optional(),
+    modoComercio: z.enum(['LIBRE', 'PRIVADO', 'SOLO_BANCO']).optional(),
+    maxOfertasPorTurno: z.number().optional(),
     robberHandLimit: z.number().optional(),
     turnoSegundos: z.number().optional(),
+    /** Jugadores que el anfitrión eligió admitir (sin él, el máximo del juego o del mapa). */
+    maxJugadores: z.number().optional(),
   }),
 });
 export type SalaPublica = z.infer<typeof esquemaSalaPublica>;
 export type OpcionesDeSala = SalaPublica['opciones'];
+
+/** Lo que el servidor propone para una sala de cierto número de jugadores. */
+export const esquemaRecomendado = z.object({
+  puntosVictoria: z.number(),
+  turnoSegundos: z.number(),
+  robberHandLimit: z.number(),
+  turnRuleMode: z.enum(['A', 'B']),
+  modoDados: z.enum(['AZAR', 'EQUILIBRADO', 'BARAJA', 'SIN_RACHAS']),
+});
+export type Recomendado = z.infer<typeof esquemaRecomendado>;
 
 /** Un mapa del catálogo: su tamaño, sus rangos de jugadores y su forma para la vista previa. */
 export const esquemaInfoDeMapa = z.object({
