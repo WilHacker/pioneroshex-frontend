@@ -28,9 +28,11 @@ export function TiraDeJugadores({ vista, nombreDe, indiceDe }: Props) {
         return (
           <li
             key={j.id}
+            data-jugador-id={j.id}
+            data-en-turno={enTurno ? 'true' : undefined}
             aria-current={enTurno ? 'true' : undefined}
             title={nombreDe(j.id)}
-            className={`flex shrink-0 items-center gap-1.5 rounded-full bg-niebla py-1 pr-2.5 pl-1 text-tinta shadow ${enTurno ? 'ring-2 ring-azafran' : ''}`}
+            className={`flex shrink-0 items-center gap-1.5 rounded-full py-1 pr-2.5 pl-1 text-tinta shadow ${enTurno ? 'bg-azafran-claro ring-2 ring-azafran' : 'bg-niebla'}`}
           >
             <span
               aria-hidden="true"

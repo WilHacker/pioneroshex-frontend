@@ -1,4 +1,4 @@
-import { Dado3D } from '@/components/arte/Dado3D';
+import { Dado } from '@/components/arte/Dado';
 
 type Props = {
   dados: readonly [number, number] | null;
@@ -25,16 +25,20 @@ function Suma({ valor }: { valor: number }) {
 }
 
 /**
- * Los dos dados rodando en 3D y, al lado, la suma. Cuando me toca tirar son un botón y laten;
+ * Los dos dados (caras 2D que giran un instante al tirarse) y, al lado, la suma. Cuando me toca tirar son un botón y laten;
  * si no, solo muestran la última tirada.
  */
 export function Dados({ dados, tirada, puedeTirar, ocupado, onTirar }: Props) {
   const suma = dados ? dados[0] + dados[1] : null;
   const cubos = (
     // La clave cambia con cada tirada para que los cubos se monten de nuevo y vuelvan a rodar.
-    <span key={`${tirada}-${dados?.join('-') ?? 'sin'}`} className="flex gap-9 px-5 pt-5 pb-6">
-      <Dado3D valor={dados?.[0] ?? null} giro={1} />
-      <Dado3D valor={dados?.[1] ?? null} giro={-1} />
+    <span key={`${tirada}-${dados?.join('-') ?? 'sin'}`} className="flex gap-3 px-3 py-2">
+      <span className="dado-rodando">
+        <Dado valor={dados?.[0] ?? null} tamano={64} />
+      </span>
+      <span className="dado-rodando">
+        <Dado valor={dados?.[1] ?? null} tamano={64} />
+      </span>
     </span>
   );
 

@@ -96,6 +96,36 @@ describe('Tablero: dibujo', () => {
   });
 });
 
+describe('Tablero: puertos y bordes', () => {
+  it('un puerto se conecta por el muelle donde tengo una casa', () => {
+    dibujar({ vista: vistaDePrueba({ edificios: { [V2]: { dueno: 'j1', tipo: 'POBLADO' } } }) });
+    const conectados = document.querySelectorAll('[data-muelle][data-conectado="true"]');
+    expect(conectados).toHaveLength(1);
+  });
+
+  it('la casa de otro jugador no conecta mi puerto', () => {
+    dibujar({ vista: vistaDePrueba({ edificios: { [V2]: { dueno: 'j2', tipo: 'POBLADO' } } }) });
+    expect(document.querySelector('[data-conectado="true"]')).not.toBeInTheDocument();
+  });
+
+  it('la isla lleva un borde de playa y otro de mar, una capa por casilla', () => {
+    dibujar();
+    expect(document.querySelectorAll('[data-borde="mar"] polygon')).toHaveLength(2);
+    expect(document.querySelectorAll('[data-borde="playa"] polygon')).toHaveLength(2);
+  });
+
+  it('los bordes van debajo de las casillas: primero el mar, luego la playa, luego el terreno', () => {
+    dibujar();
+    const mar = document.querySelector('[data-borde="mar"]')!;
+    const playa = document.querySelector('[data-borde="playa"]')!;
+    const terreno = document.querySelector('title')!.closest('g')!;
+    const antes = (a: Node, b: Node): boolean =>
+      Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(antes(mar, playa)).toBe(true);
+    expect(antes(playa, terreno)).toBe(true);
+  });
+});
+
 describe('Tablero: solo los sitios legales', () => {
   it('para poblados ofrece únicamente los vértices que el servidor marcó', async () => {
     const { alVertice } = dibujar({ objetivo: 'POBLADOS', sitios: [V2] });

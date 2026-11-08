@@ -136,4 +136,12 @@ Estado del cliente (se instala cuando haga falta, no antes):
 - Jugar desde otro dispositivo de la casa: `pnpm dev` ya escucha en `0.0.0.0` y `next.config.ts`
   permite orígenes `192.168.*.*` y `10.*.*.*`; falta poner la IP del PC en `NEXT_PUBLIC_API_URL`
   (aquí) y en `FRONTEND_URL` (backend), y abrir los puertos 3000 y 3001 en el firewall de Windows.
+- **Reglas que el cliente repite solo para mostrarlas** (el servidor es quien decide): la razón de
+  cambio con la banca y los puertos conectados (`src/lib/puertos.ts`, igual que
+  `core/reglas/puertos.ts` del backend: 4:1 sin puerto, 3:1 con una casa en uno genérico, 2:1 con una
+  casa en el de ese recurso) y la composición del mazo de desarrollo (`src/lib/mazo.ts`, igual que
+  `core/reglas/mazo.ts`: 25 cartas por cada 4 jugadores). Si cambian en el backend, hay que cambiarlas aquí.
+- **Piezas por jugador:** `public/piezas/<color>/{poblado,ciudad,camino}.svg` se generan con
+  `pnpm piezas` a partir del arte en oro de `public/tablero/` y de la paleta de `src/lib/colores.ts`
+  (16 colores). Si cambia la paleta, hay que volver a ejecutarlo; un test avisa si falta algún archivo.
 - Cualquier cambio de forma de una respuesta o evento se coordina en **los dos repos**.

@@ -1,9 +1,10 @@
 import { IconoPieza, type TipoPieza } from '@/components/arte/IconoPieza';
-import { IconoRecurso } from '@/components/arte/IconoRecurso';
 import { IconoAccion } from '@/components/arte/IconosEstado';
+import { IconoIntercambio } from '@/components/arte/IconoIntercambio';
 import { COSTOS } from '@/lib/costos';
 import { RECURSOS, type AccionDisponible, type Vista } from '@/lib/esquemas';
 import { textoDeMotivo } from '@/lib/mensajes';
+import { CartaRecurso } from './CartaRecurso';
 import type { Modo } from './logica';
 
 type Props = {
@@ -35,19 +36,25 @@ const ELEMENTOS: readonly Elemento[] = [
 ];
 
 const BOTON =
-  'relative flex size-12 items-center justify-center rounded-2xl border-2 shadow-md sm:size-16 transition enabled:hover:-translate-y-1 disabled:opacity-45';
+  'relative flex size-12 items-center justify-center rounded-2xl border-[3px] shadow-md ring-2 ring-[#101c28] sm:size-16 transition enabled:hover:-translate-y-1 disabled:opacity-45';
+
+/** Los botones son celestes con borde blanco; el modo elegido se pone azafrán. */
+const CELESTE = 'border-white bg-gradient-to-b from-[#9bdcf2] to-[#4fb0d6]';
+const AZAFRAN = 'border-azafran bg-gradient-to-b from-azafran-claro to-azafran';
 
 function Costo({ pieza }: { pieza: TipoPieza }) {
   return (
     <span
       role="tooltip"
-      className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-2 hidden -translate-x-1/2 items-center gap-1 rounded-xl bg-niebla px-2 py-1.5 shadow-lg group-focus-within:flex group-hover:flex"
+      className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-2 hidden -translate-x-1/2 items-center gap-2.5 rounded-xl border-[3px] border-[#101c28] bg-[#f5efe0] px-3 pt-3 pb-2 shadow-lg group-focus-within:flex group-hover:flex"
     >
       {RECURSOS.filter((r) => (COSTOS[pieza][r] ?? 0) > 0).map((r) => (
-        <span key={r} className="flex items-center text-xs font-bold text-tinta">
-          <IconoRecurso recurso={r} tamano={22} />
-          {(COSTOS[pieza][r] ?? 0) > 1 ? `×${COSTOS[pieza][r]}` : ''}
-        </span>
+        <CartaRecurso
+          key={r}
+          recurso={r}
+          tamano="pequena"
+          cantidad={(COSTOS[pieza][r] ?? 0) > 1 ? COSTOS[pieza][r] : undefined}
+        />
       ))}
     </span>
   );
@@ -88,9 +95,9 @@ export function Paleta({
         aria-pressed={comercioAbierto}
         disabled={!puedeComerciar && !comercioAbierto}
         onClick={onComercio}
-        className={`${BOTON} ${comercioAbierto ? 'border-azafran bg-azafran-claro' : 'border-borde bg-niebla'} text-tinta`}
+        className={`${BOTON} ${comercioAbierto ? AZAFRAN : CELESTE} text-tinta`}
       >
-        <IconoAccion tipo="INTERCAMBIO" tamano={30} />
+        <IconoIntercambio tamano={42} />
       </button>
 
       {ELEMENTOS.map((e) => {
@@ -112,7 +119,7 @@ export function Paleta({
                 !accion?.disponible && accion?.motivo ? textoDeMotivo(accion.motivo) : e.etiqueta
               }
               onClick={alPulsar}
-              className={`${BOTON} ${activo ? 'border-azafran bg-azafran-claro' : 'border-borde bg-niebla'}`}
+              className={`${BOTON} ${activo ? AZAFRAN : CELESTE}`}
             >
               <IconoPieza
                 pieza={e.pieza}

@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { SalaPublica } from '@/lib/esquemas';
 import { yo } from '@/lib/cuentas';
@@ -102,10 +102,13 @@ describe('SalaDeEspera', () => {
     render(<SalaDeEspera salaId="abcd1234" onEmpezada={onEmpezada} />);
 
     await screen.findByRole('heading');
-    expect(onEmpezada).toHaveBeenCalledWith({
-      credencial: beto,
-      nombres: { j1: 'Ana', j2: 'Beto' },
-    });
+    // El aviso sale en un efecto posterior a pintar la sala: se espera, no se supone.
+    await waitFor(() =>
+      expect(onEmpezada).toHaveBeenCalledWith({
+        credencial: beto,
+        nombres: { j1: 'Ana', j2: 'Beto' },
+      }),
+    );
   });
 
   it('si ya empezó y no estoy en ella, lo dice en lugar de entrar', async () => {

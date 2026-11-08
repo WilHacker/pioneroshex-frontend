@@ -1,6 +1,7 @@
-import { oscurecer } from '@/components/arte/IconoPieza';
 import { IconoRecurso } from '@/components/arte/IconoRecurso';
 import type { Punto, Recurso } from '@/lib/esquemas';
+import { archivoDePieza } from '@/lib/piezas';
+import { ImagenSVG } from './ImagenSVG';
 
 /** Las piezas del tablero, en unidades del tablero (el lado de una casilla mide 1). */
 
@@ -11,47 +12,48 @@ type PiezaProps = {
   fantasma?: boolean;
 };
 
+/** Cuánto ocupa cada dibujo en el tablero, en unidades del tablero (el lado de una casilla es 1). */
+const TAMANO_POBLADO = 0.68;
+const TAMANO_CIUDAD = 0.66;
+const TAMANO_LADRON = 0.64;
+/** El camino ocupa esta parte del largo del segmento: deja ver los edificios de los extremos. */
+const LARGO_CAMINO = 0.8;
+/** Alto y ancho del dibujo del camino (40 × 194): sirve para no deformarlo. */
+const PROPORCION_CAMINO = 40 / 194;
+const OPACIDAD_FANTASMA = 0.72;
+
+/** Una casa sobre su vértice, en el color del jugador. */
 export function Poblado({ posicion, color, fantasma = false }: PiezaProps) {
-  const borde = oscurecer(color);
   return (
-    <g transform={`translate(${posicion.x} ${posicion.y})`} opacity={fantasma ? 0.72 : 1}>
-      <polygon
-        points="0,-0.22 0.19,-0.06 0.19,0.16 -0.19,0.16 -0.19,-0.06"
-        fill={color}
-        stroke={borde}
-        strokeWidth="0.04"
-        strokeLinejoin="round"
+    <g
+      transform={`translate(${posicion.x} ${posicion.y})`}
+      opacity={fantasma ? OPACIDAD_FANTASMA : 1}
+    >
+      <ImagenSVG
+        src={archivoDePieza('poblado', color)}
+        centroX={0}
+        centroY={-0.04}
+        ancho={TAMANO_POBLADO}
+        alto={TAMANO_POBLADO}
       />
-      <polygon points="0,-0.22 0.19,-0.06 0,-0.1" fill="#fff" opacity="0.28" />
-      <rect x="-0.035" y="0.04" width="0.07" height="0.12" fill={borde} />
     </g>
   );
 }
 
+/** Una ciudad sobre su vértice, en el color del jugador. */
 export function Ciudad({ posicion, color, fantasma = false }: PiezaProps) {
-  const borde = oscurecer(color);
   return (
-    <g transform={`translate(${posicion.x} ${posicion.y})`} opacity={fantasma ? 0.72 : 1}>
-      <polygon
-        points="-0.27,0.17 -0.27,-0.04 -0.12,-0.16 0.03,-0.04 0.03,0.17"
-        fill={color}
-        stroke={borde}
-        strokeWidth="0.04"
-        strokeLinejoin="round"
+    <g
+      transform={`translate(${posicion.x} ${posicion.y})`}
+      opacity={fantasma ? OPACIDAD_FANTASMA : 1}
+    >
+      <ImagenSVG
+        src={archivoDePieza('ciudad', color)}
+        centroX={0}
+        centroY={-0.04}
+        ancho={TAMANO_CIUDAD}
+        alto={TAMANO_CIUDAD}
       />
-      <rect
-        x="0.03"
-        y="-0.12"
-        width="0.24"
-        height="0.29"
-        fill={color}
-        stroke={borde}
-        strokeWidth="0.04"
-        strokeLinejoin="round"
-      />
-      <rect x="0.03" y="-0.2" width="0.24" height="0.08" fill={borde} />
-      <rect x="0.11" y="-0.02" width="0.08" height="0.08" fill="#fff6d1" />
-      <rect x="-0.17" y="0.04" width="0.07" height="0.13" fill={borde} />
     </g>
   );
 }
@@ -63,113 +65,171 @@ type CaminoProps = {
   fantasma?: boolean;
 };
 
-/** Un camino entre dos vértices, acortado en los extremos para no tapar los edificios. */
+/** Un camino entre dos vértices: su dibujo (vertical) girado para que siga el segmento. */
 export function Camino({ desde, hasta, color, fantasma = false }: CaminoProps) {
-  const largo = Math.hypot(hasta.x - desde.x, hasta.y - desde.y) || 1;
-  const recorte = 0.15 / largo;
-  const a = {
-    x: desde.x + (hasta.x - desde.x) * recorte,
-    y: desde.y + (hasta.y - desde.y) * recorte,
-  };
-  const b = {
-    x: hasta.x - (hasta.x - desde.x) * recorte,
-    y: hasta.y - (hasta.y - desde.y) * recorte,
-  };
+  const dx = hasta.x - desde.x;
+  const dy = hasta.y - desde.y;
+  const largo = Math.hypot(dx, dy) || 1;
+  // El dibujo mira a lo largo del eje y: este giro lo lleva a la dirección del segmento.
+  const giro = (Math.atan2(-dx, dy) * 180) / Math.PI;
+  const alto = largo * LARGO_CAMINO;
   return (
-    <g opacity={fantasma ? 0.72 : 1} strokeLinecap="round">
-      <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke={oscurecer(color)} strokeWidth="0.19" />
-      <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke={color} strokeWidth="0.12" />
-      <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="#fff" strokeWidth="0.03" opacity="0.3" />
+    <g
+      transform={`translate(${(desde.x + hasta.x) / 2} ${(desde.y + hasta.y) / 2}) rotate(${giro})`}
+      opacity={fantasma ? OPACIDAD_FANTASMA : 1}
+    >
+      <ImagenSVG
+        src={archivoDePieza('camino', color)}
+        centroX={0}
+        centroY={0}
+        ancho={alto * PROPORCION_CAMINO}
+        alto={alto}
+      />
     </g>
   );
 }
 
-/** El ladrón: una figura oscura con capucha, apoyada sobre la casilla. */
+/** El ladrón: su figura apoyada sobre la casilla. */
 export function Ladron({ posicion }: { posicion: Punto }) {
   return (
     <g transform={`translate(${posicion.x} ${posicion.y})`}>
       <title>Ladrón</title>
-      <ellipse cx="0" cy="0.18" rx="0.16" ry="0.05" fill="#000" opacity="0.28" />
-      <path
-        d="M-0.14 0.16 Q-0.14 -0.02 0 -0.08 Q0.14 -0.02 0.14 0.16 Z"
-        fill="#232a35"
-        stroke="#0e1218"
-        strokeWidth="0.025"
+      <ImagenSVG
+        src="/tablero/ladron.svg"
+        centroX={0}
+        centroY={-0.06}
+        ancho={TAMANO_LADRON}
+        alto={TAMANO_LADRON}
       />
-      <circle cx="0" cy="-0.16" r="0.09" fill="#232a35" stroke="#0e1218" strokeWidth="0.025" />
-      <ellipse cx="0" cy="-0.15" rx="0.045" ry="0.035" fill="#8fd3cf" opacity="0.75" />
     </g>
   );
 }
 
 type PuertoProps = {
-  borde: Punto;
+  /** Los dos vértices que protege el puerto: cada uno lleva un muelle hasta el barco. */
+  vertices: readonly [Punto, Punto];
   mar: Punto;
+  /** Vector unitario hacia el mar: si mira hacia arriba la etiqueta va sobre el barco, si no debajo. */
+  afuera: Punto;
   tipo: 'GENERICO' | Recurso;
+  /** En qué vértices (en el orden de `vertices`) tengo una casa: ese muelle es el que me conecta. */
+  conectados?: readonly [boolean, boolean];
 };
 
-/** Un puerto: un barquito en el mar atado a la costa, con su razón de cambio. */
-export function Puerto({ borde, mar, tipo }: PuertoProps) {
-  const etiqueta = tipo === 'GENERICO' ? '3:1' : '2:1';
+const BARCO: Record<PuertoProps['tipo'], string> = {
+  GENERICO: '/tablero/puerto-3a1.svg',
+  MADERA: '/tablero/puerto-madera.svg',
+  LADRILLO: '/tablero/puerto-ladrillo.svg',
+  OVEJA: '/tablero/puerto-oveja.svg',
+  TRIGO: '/tablero/puerto-trigo.svg',
+  MINERAL: '/tablero/puerto-mineral.svg',
+};
+
+const SIN_CONECTAR: readonly [boolean, boolean] = [false, false];
+
+const TAMANO_BARCO = 1.05;
+/** Qué tan lejos del centro del barco, arriba o abajo, va la etiqueta con la razón de cambio. */
+const DISTANCIA_ETIQUETA = 0.68;
+const ALTO_ETIQUETA = 0.42;
+
+type MuelleProps = { desde: Punto; hasta: Punto; conectado: boolean };
+
+/**
+ * Un muelle de tablones desde un vértice de la costa hasta el barco. Donde tengo una casa se
+ * resalta en dorado con un halo: ese es el muelle que me deja usar el puerto.
+ */
+function Muelle({ desde, hasta, conectado }: MuelleProps) {
+  const linea = {
+    x1: desde.x,
+    y1: desde.y,
+    x2: hasta.x,
+    y2: hasta.y,
+    strokeLinecap: 'round',
+  } as const;
+  return (
+    <g data-muelle="" {...(conectado && { 'data-conectado': 'true' })}>
+      {conectado && <line {...linea} stroke="#ffffff" strokeWidth="0.22" opacity="0.85" />}
+      <line
+        {...linea}
+        stroke={conectado ? '#6b3f12' : '#4a2c12'}
+        strokeWidth={conectado ? 0.15 : 0.1}
+      />
+      <line
+        {...linea}
+        stroke={conectado ? '#ffd34d' : '#d9b377'}
+        strokeWidth={conectado ? 0.09 : 0.06}
+      />
+    </g>
+  );
+}
+
+/**
+ * Lo que acepta el puerto, en grande: el recurso (si es 2:1) y la razón. El dibujo del barco ya la
+ * lleva en la vela, pero ahí es demasiado pequeña para leerla de un vistazo.
+ */
+function EtiquetaDePuerto({ tipo, conectado }: { tipo: PuertoProps['tipo']; conectado: boolean }) {
+  const razon = tipo === 'GENERICO' ? '3:1' : '2:1';
+  const ancho = tipo === 'GENERICO' ? 0.74 : 1.2;
+  const que =
+    tipo === 'GENERICO'
+      ? 'Puerto: cambia 3 cartas iguales por 1 de lo que quieras'
+      : `Puerto: cambia 2 cartas de ${tipo.toLowerCase()} por 1 de lo que quieras`;
+  return (
+    <g data-etiqueta-puerto="" {...(conectado && { 'data-conectado': 'true' })}>
+      <title>
+        {conectado
+          ? `${que}. Estás conectado: tienes una casa en su muelle.`
+          : `${que}. Para usarlo necesitas una casa en uno de sus muelles.`}
+      </title>
+      <rect
+        x={-ancho / 2}
+        y={-ALTO_ETIQUETA / 2}
+        width={ancho}
+        height={ALTO_ETIQUETA}
+        rx={ALTO_ETIQUETA / 2}
+        fill="#0c3340"
+        stroke={conectado ? '#ffc95c' : '#fff'}
+        strokeWidth={conectado ? 0.07 : 0.04}
+      />
+      {tipo !== 'GENERICO' && (
+        <g transform={`translate(${-ancho / 2 + 0.08} ${-0.18})`}>
+          <IconoRecurso recurso={tipo} tamano={0.36} />
+        </g>
+      )}
+      <text
+        x={tipo === 'GENERICO' ? 0 : 0.2}
+        y="0.115"
+        textAnchor="middle"
+        fontSize="0.32"
+        fontWeight="800"
+        fill={conectado ? '#ffd34d' : '#fff'}
+      >
+        {razon}
+      </text>
+    </g>
+  );
+}
+
+/**
+ * Un puerto: el barco en el mar, un muelle a cada vértice que protege y lo que acepta. Para usarlo
+ * hace falta una casa en uno de sus dos vértices: ese muelle se resalta.
+ */
+export function Puerto({ vertices, mar, afuera, tipo, conectados = SIN_CONECTAR }: PuertoProps) {
+  // Centrada sobre el barco (nunca a un lado): así ocupa poco ancho y el tablero necesita menos margen.
+  const etiqueta = { x: mar.x, y: mar.y + (afuera.y < 0 ? -1 : 1) * DISTANCIA_ETIQUETA };
   return (
     <g>
-      <line
-        x1={borde.x}
-        y1={borde.y}
-        x2={mar.x}
-        y2={mar.y}
-        stroke="#c9a56a"
-        strokeWidth="0.05"
-        strokeDasharray="0.07 0.05"
+      <Muelle desde={vertices[0]} hasta={mar} conectado={conectados[0]} />
+      <Muelle desde={vertices[1]} hasta={mar} conectado={conectados[1]} />
+      <ImagenSVG
+        src={BARCO[tipo]}
+        centroX={mar.x}
+        centroY={mar.y}
+        ancho={TAMANO_BARCO}
+        alto={TAMANO_BARCO}
       />
-      <g transform={`translate(${mar.x} ${mar.y})`}>
-        <path
-          d="M-0.26 0.06 H0.26 L0.17 0.2 H-0.17 Z"
-          fill="#7a4a24"
-          stroke="#4a2c12"
-          strokeWidth="0.025"
-          strokeLinejoin="round"
-        />
-        <line x1="0" y1="0.06" x2="0" y2="-0.3" stroke="#4a2c12" strokeWidth="0.03" />
-        <polygon
-          points="0.02,-0.28 0.2,0.02 0.02,0.02"
-          fill="#fdf7e6"
-          stroke="#bda97a"
-          strokeWidth="0.02"
-        />
-        <polygon
-          points="-0.02,-0.2 -0.18,0.02 -0.02,0.02"
-          fill="#f2e6c4"
-          stroke="#bda97a"
-          strokeWidth="0.02"
-        />
-        <rect
-          x="-0.17"
-          y="0.21"
-          width="0.34"
-          height="0.15"
-          rx="0.07"
-          fill="#0c3340"
-          opacity="0.85"
-        />
-        <text x="0" y="0.325" textAnchor="middle" fontSize="0.12" fontWeight="800" fill="#fff">
-          {etiqueta}
-        </text>
-        {tipo !== 'GENERICO' && (
-          <g transform="translate(-0.13 -0.43)">
-            <circle
-              cx="0.13"
-              cy="0.13"
-              r="0.15"
-              fill="#fbf3dc"
-              stroke="#8a7a52"
-              strokeWidth="0.02"
-            />
-            <g transform="translate(0.015 0.015)">
-              <IconoRecurso recurso={tipo} tamano={0.23} />
-            </g>
-          </g>
-        )}
+      <g transform={`translate(${etiqueta.x} ${etiqueta.y})`}>
+        <EtiquetaDePuerto tipo={tipo} conectado={conectados[0] || conectados[1]} />
       </g>
     </g>
   );

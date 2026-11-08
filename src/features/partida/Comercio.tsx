@@ -1,17 +1,22 @@
 import { useState } from 'react';
 import { IconoAccion } from '@/components/arte/IconosEstado';
+import { IconoIntercambio } from '@/components/arte/IconoIntercambio';
 import {
   RECURSOS,
   type AccionDisponible,
   type Cantidades,
+  type Mesa,
   type Recurso,
   type Vista,
 } from '@/lib/esquemas';
 import { NOMBRE_RECURSO } from '@/lib/mensajes';
+import { razonDeBanca } from '@/lib/puertos';
 import { CartaRecurso } from './CartaRecurso';
 import { colorDeJugador } from '@/lib/colores';
 
 type Props = {
+  /** El tablero: de aquí salen los puertos que dan mejor razón de cambio con la banca. */
+  mesa: Mesa;
   vista: Vista;
   acciones: readonly AccionDisponible[];
   nombreDe: (jugadorId: string) => string;
@@ -33,16 +38,21 @@ const soloConCantidad = (c: Cantidades): Partial<Cantidades> =>
 
 const total = (c: Cantidades): number => RECURSOS.reduce((suma, r) => suma + c[r], 0);
 
+const nombreCapital = (r: Recurso): string =>
+  NOMBRE_RECURSO[r].charAt(0).toUpperCase() + NOMBRE_RECURSO[r].slice(1);
+
 type FilaProps = {
   titulo: string;
   valores: Cantidades;
   /** Máximo por recurso; `null` si no hay manos que respetar. */
   limite: Cantidades | null;
+  /** Con la banca: cuántas cartas cuesta cada recurso (4, 3 o 2); se muestra bajo cada carta. */
+  razones?: Readonly<Record<Recurso, number>>;
   alCambiar: (recurso: Recurso, delta: number) => void;
 };
 
 /** Cinco cartas: tocar una suma 1, el signo menos quita 1. */
-function FilaDeCartas({ titulo, valores, limite, alCambiar }: FilaProps) {
+function FilaDeCartas({ titulo, valores, limite, razones, alCambiar }: FilaProps) {
   return (
     <fieldset className="flex items-end gap-2">
       <legend className="sr-only">{titulo}</legend>
@@ -58,6 +68,14 @@ function FilaDeCartas({ titulo, valores, limite, alCambiar }: FilaProps) {
             etiqueta={`${titulo}: añadir ${NOMBRE_RECURSO[r]}`}
             onClick={() => alCambiar(r, 1)}
           />
+          {razones && (
+            <span
+              title={`${nombreCapital(r)}: ${razones[r]} cartas por 1`}
+              className={`rounded-full px-1.5 text-[0.65rem] leading-4 font-extrabold ${razones[r] < 4 ? 'bg-hoja text-white' : 'bg-white text-tinta'}`}
+            >
+              {razones[r]}:1
+            </span>
+          )}
           <button
             type="button"
             aria-label={`${titulo}: quitar ${NOMBRE_RECURSO[r]}`}
@@ -75,6 +93,7 @@ function FilaDeCartas({ titulo, valores, limite, alCambiar }: FilaProps) {
 
 /** El panel para comerciar: se arma la oferta tocando cartas y se elige con quién. */
 export function Comercio({
+  mesa,
   vista,
   acciones,
   nombreDe,
@@ -92,11 +111,27 @@ export function Comercio({
   const puedeBanca = acciones.some((a) => a.tipo === 'CAMBIAR_CON_BANCA' && a.disponible);
   const conBanca = destino === 'BANCA';
 
+  // Con la banca se entregan 4 cartas iguales (3 con un puerto genérico, 2 con el de ese recurso) y
+  // se recibe 1: las razones salen de mis casas en los puertos, igual que las calcula el servidor.
+  const razones = Object.fromEntries(
+    RECURSOS.map((r) => [r, razonDeBanca(mesa, vista, r)]),
+  ) as Record<Recurso, number>;
+  const alcanzaParaBanca = mano
+    ? (Object.fromEntries(
+        RECURSOS.map((r) => [r, mano[r] >= razones[r] ? mano[r] : 0]),
+      ) as Cantidades)
+    : null;
+
   const cambiar =
-    (poner: (f: (previo: Cantidades) => Cantidades) => void, tope: Cantidades | null) =>
+    (
+      poner: (f: (previo: Cantidades) => Cantidades) => void,
+      tope: Cantidades | null,
+      /** Cuántas cartas pone un toque cuando se comercia con la banca. */
+      cartasConBanca: (recurso: Recurso) => number = () => 1,
+    ) =>
     (recurso: Recurso, delta: number): void => {
       poner((previo) => {
-        if (conBanca) return { ...VACIO, [recurso]: delta > 0 ? 1 : 0 };
+        if (conBanca) return { ...VACIO, [recurso]: delta > 0 ? cartasConBanca(recurso) : 0 };
         const maximo = tope ? tope[recurso] : MAX_PEDIDO;
         return { ...previo, [recurso]: Math.max(0, Math.min(maximo, previo[recurso] + delta)) };
       });
@@ -106,7 +141,14 @@ export function Comercio({
     RECURSOS.filter((r) => doy[r] > 0).length === 1 &&
     RECURSOS.filter((r) => pido[r] > 0).length === 1;
   const mismoRecurso = RECURSOS.some((r) => doy[r] > 0 && pido[r] > 0);
-  const valido = conBanca ? unoDeCada && !mismoRecurso : total(doy) > 0 && total(pido) > 0;
+  const entregaBanca = RECURSOS.find((r) => doy[r] > 0);
+  const cobroDeBanca =
+    entregaBanca !== undefined &&
+    doy[entregaBanca] === razones[entregaBanca] &&
+    (mano?.[entregaBanca] ?? 0) >= razones[entregaBanca];
+  const valido = conBanca
+    ? unoDeCada && !mismoRecurso && cobroDeBanca
+    : total(doy) > 0 && total(pido) > 0;
 
   const enviar = (): void => {
     if (conBanca) {
@@ -135,11 +177,16 @@ export function Comercio({
       aria-label="Comerciar"
       className="absolute right-0 bottom-full z-30 mb-3 flex w-[min(33rem,94vw)] flex-col gap-3 rounded-2xl border-2 border-azafran bg-niebla p-3 text-tinta shadow-2xl"
     >
+      <header className="flex items-center gap-2">
+        <IconoIntercambio tamano={36} />
+        <h2 className="text-lg font-extrabold">Comerciar</h2>
+      </header>
       <FilaDeCartas
         titulo="Doy"
         valores={doy}
-        limite={conBanca ? mano : mano}
-        alCambiar={cambiar(setDoy, mano)}
+        limite={conBanca ? alcanzaParaBanca : mano}
+        {...(conBanca && { razones })}
+        alCambiar={cambiar(setDoy, mano, (r) => razones[r])}
       />
       <FilaDeCartas titulo="Pido" valores={pido} limite={null} alCambiar={cambiar(setPido, null)} />
 

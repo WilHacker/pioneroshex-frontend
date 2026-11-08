@@ -1,11 +1,11 @@
 import type { ReactNode } from 'react';
 import { Dado } from '@/components/arte/Dado';
 import { IconoPieza } from '@/components/arte/IconoPieza';
-import { IconoRecurso } from '@/components/arte/IconoRecurso';
 import { IconoAccion, IconoDesarrollo } from '@/components/arte/IconosEstado';
 import { RECURSOS, esquemaRecurso, type EventoJuego } from '@/lib/esquemas';
 import { describirEvento } from '@/lib/mensajes';
 import { colorDeJugador } from '@/lib/colores';
+import { CartaRecurso } from './CartaRecurso';
 
 type Props = {
   eventos: readonly EventoJuego[];
@@ -13,7 +13,8 @@ type Props = {
   indiceDe: (jugadorId: string) => number;
 };
 
-const LINEAS_MAX = 12;
+/** Todo lo que guarda la pantalla (`useJuego` conserva 60 eventos): la caja tiene scroll. */
+const LINEAS_MAX = 60;
 
 const texto = (valor: unknown): string => (typeof valor === 'string' ? valor : '');
 const numero = (valor: unknown): number => (typeof valor === 'number' ? valor : 0);
@@ -22,13 +23,13 @@ const recursoDe = (valor: unknown) => {
   return r.success ? r.data : null;
 };
 
-/** Cartas sueltas de un recurso: `2 [icono]`. */
+/** Cartas sueltas de un recurso: una carta pequeña con el número en la esquina. */
 function Cantidad({ valor, recurso }: { valor: number; recurso: unknown }) {
   const r = recursoDe(recurso);
+  if (!r) return <span className="font-bold">{valor}</span>;
   return (
-    <span className="inline-flex items-center gap-0.5 font-bold">
-      {valor}
-      {r && <IconoRecurso recurso={r} tamano={20} />}
+    <span className="mr-1 inline-flex pt-1.5">
+      <CartaRecurso recurso={r} tamano="mini" cantidad={valor} />
     </span>
   );
 }
@@ -126,7 +127,10 @@ export function Registro({ eventos, nombreDe, indiceDe }: Props) {
   return (
     <section
       aria-labelledby="titulo-registro"
-      className="rounded-2xl border border-borde bg-niebla p-3 text-tinta shadow-lg"
+      // Una zona con scroll debe poder recorrerse con el teclado.
+      // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex
+      tabIndex={0}
+      className="max-h-56 shrink-0 overflow-y-auto overscroll-contain rounded-2xl border-[3px] border-[#101c28] bg-[#f5efe0] p-3 text-tinta shadow-lg outline-none focus-visible:ring-2 focus-visible:ring-azafran"
     >
       <h2 id="titulo-registro" className="sr-only">
         Registro

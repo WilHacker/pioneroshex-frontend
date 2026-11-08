@@ -16,6 +16,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "typecheck": "next typegen && tsc --noEmit",
+    "piezas": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/colorear-piezas.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:cov": "vitest run --coverage"

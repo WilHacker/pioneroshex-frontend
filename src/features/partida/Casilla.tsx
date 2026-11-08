@@ -1,8 +1,8 @@
-import type { ReactNode } from 'react';
 import { oscurecer } from '@/components/arte/IconoPieza';
 import type { Punto, Terreno } from '@/lib/esquemas';
 import { esquinasDeCasilla } from '@/lib/tablero';
 import { COLOR_TERRENO, NOMBRE_TERRENO, aclarar } from '@/lib/colores';
+import { ImagenSVG } from './ImagenSVG';
 
 const TERRENOS = Object.keys(COLOR_TERRENO) as Terreno[];
 
@@ -30,64 +30,6 @@ const LUGARES: readonly Punto[] = [
   { x: 0.4, y: 0.4 },
 ];
 
-function Pino({ x, y }: Punto) {
-  return (
-    <g transform={`translate(${x} ${y})`}>
-      <rect x="-0.03" y="0.1" width="0.06" height="0.1" fill="#6b4423" />
-      <polygon points="0,-0.24 0.15,0.02 -0.15,0.02" fill="#1f5a31" />
-      <polygon points="0,-0.12 0.19,0.14 -0.19,0.14" fill="#27703f" />
-    </g>
-  );
-}
-
-function Oveja({ x, y }: Punto) {
-  return (
-    <g transform={`translate(${x} ${y})`}>
-      <circle cx="-0.05" cy="0" r="0.09" fill="#fff" />
-      <circle cx="0.04" cy="-0.04" r="0.09" fill="#fff" />
-      <circle cx="0.08" cy="0.03" r="0.08" fill="#fff" />
-      <circle cx="-0.01" cy="0.05" r="0.08" fill="#fff" />
-      <ellipse cx="0.17" cy="0.03" rx="0.05" ry="0.06" fill="#3a3a44" />
-    </g>
-  );
-}
-
-function Espiga({ x, y }: Punto) {
-  return (
-    <g transform={`translate(${x} ${y})`} stroke="#8a6a12" strokeWidth="0.03" strokeLinecap="round">
-      <line x1="0" y1="0.2" x2="0" y2="-0.18" />
-      {[-0.1, 0, 0.1].map((dy) => (
-        <g key={dy} fill="#fff0a6" stroke="none">
-          <ellipse cx="-0.06" cy={dy} rx="0.06" ry="0.03" transform={`rotate(-35 -0.06 ${dy})`} />
-          <ellipse cx="0.06" cy={dy} rx="0.06" ry="0.03" transform={`rotate(35 0.06 ${dy})`} />
-        </g>
-      ))}
-    </g>
-  );
-}
-
-function Ladrillos({ x, y }: Punto) {
-  return (
-    <g transform={`translate(${x} ${y})`} fill="#f1a37f" stroke="#a2502f" strokeWidth="0.015">
-      <rect x="-0.16" y="-0.12" width="0.15" height="0.09" rx="0.01" />
-      <rect x="0.01" y="-0.12" width="0.15" height="0.09" rx="0.01" />
-      <rect x="-0.08" y="-0.02" width="0.16" height="0.09" rx="0.01" />
-      <rect x="-0.16" y="0.08" width="0.15" height="0.09" rx="0.01" />
-      <rect x="0.01" y="0.08" width="0.15" height="0.09" rx="0.01" />
-    </g>
-  );
-}
-
-function Pico({ x, y }: Punto) {
-  return (
-    <g transform={`translate(${x} ${y})`}>
-      <polygon points="-0.2,0.15 -0.02,-0.2 0.2,0.15" fill="#5d6b7e" />
-      <polygon points="-0.02,-0.2 0.05,-0.06 0,-0.08 -0.04,-0.03 -0.08,-0.09" fill="#f3f7fb" />
-      <polygon points="0.07,0.15 0.18,-0.04 0.3,0.15" fill="#6d7b8e" />
-    </g>
-  );
-}
-
 function Duna({ x, y }: Punto) {
   return (
     <g
@@ -103,14 +45,33 @@ function Duna({ x, y }: Punto) {
   );
 }
 
-const MOTIVO: Record<Terreno, (p: Punto) => ReactNode> = {
-  BOSQUE: (p) => <Pino {...p} />,
-  PASTO: (p) => <Oveja {...p} />,
-  CAMPO: (p) => <Espiga {...p} />,
-  COLINA: (p) => <Ladrillos {...p} />,
-  MONTANA: (p) => <Pico {...p} />,
-  DESIERTO: (p) => <Duna {...p} />,
+/** Terrenos con icono propio (`public/recursos/`); `proporcion` es ancho / alto del dibujo. */
+const ICONOS: Partial<Record<Terreno, { src: string; proporcion: number }>> = {
+  BOSQUE: { src: '/recursos/madera.svg', proporcion: 0.97 },
+  PASTO: { src: '/recursos/oveja.svg', proporcion: 1.33 },
+  CAMPO: { src: '/recursos/trigo.svg', proporcion: 0.92 },
+  COLINA: { src: '/recursos/ladrillo.svg', proporcion: 1.78 },
+  MONTANA: { src: '/recursos/mineral.svg', proporcion: 1.52 },
+  DESIERTO: { src: '/recursos/cactus.svg', proporcion: 1 },
 };
+
+/** El icono cabe en la mitad de arriba de la casilla, sobre la ficha del número. */
+const ICONO_ANCHO_MAX = 0.6;
+const ICONO_ALTO_MAX = 0.46;
+const ICONO_CENTRO_Y = -0.58;
+
+function Icono({ src, proporcion }: { src: string; proporcion: number }) {
+  const alto = Math.min(ICONO_ALTO_MAX, ICONO_ANCHO_MAX / proporcion);
+  return (
+    <ImagenSVG
+      src={src}
+      centroX={0}
+      centroY={ICONO_CENTRO_Y}
+      ancho={alto * proporcion}
+      alto={alto}
+    />
+  );
+}
 
 /** Los puntos de probabilidad de un número: 5 para el 6 y el 8, 1 para el 2 y el 12. */
 const probabilidad = (numero: number): number => 6 - Math.abs(7 - numero);
@@ -132,6 +93,7 @@ export function Casilla({ terreno, ficha, centro, resaltada = false }: Props) {
     y: centro.y + (e.y - centro.y) * 0.9,
   }));
   const roja = ficha === 6 || ficha === 8;
+  const icono = ICONOS[terreno];
 
   return (
     <g>
@@ -153,9 +115,10 @@ export function Casilla({ terreno, ficha, centro, resaltada = false }: Props) {
         opacity="0.8"
       />
       <g transform={`translate(${centro.x} ${centro.y})`}>
-        {LUGARES.map((lugar) => (
-          <g key={`${lugar.x},${lugar.y}`}>{MOTIVO[terreno](lugar)}</g>
-        ))}
+        {icono && <Icono {...icono} />}
+        {/* El desierto, además del cactus, conserva dos dunas abajo: el ladrón empieza aquí. */}
+        {terreno === 'DESIERTO' &&
+          LUGARES.slice(2).map((lugar) => <Duna key={`${lugar.x},${lugar.y}`} {...lugar} />)}
       </g>
       {resaltada && ficha !== null && (
         <g className="sitio">

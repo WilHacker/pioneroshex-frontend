@@ -205,6 +205,31 @@ describe('Partida: preparación', () => {
     expect(enviar).toHaveBeenCalledWith({ tipo: 'COLOCAR_POBLADO_INICIAL', vertice: V2 });
   });
 
+  it('con una vista previa aparece un botón grande para colocar, que no tapa el tablero', async () => {
+    mostrar(
+      juego({
+        vista: vistaDePrueba({ fase: 'PREPARACION_POBLADO', dados: null }),
+        sitios: { poblados: [V1, V2] },
+      }),
+    );
+    expect(screen.queryByRole('button', { name: 'Colocar aquí' })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: `Construir en el vértice ${V2}` }));
+    await userEvent.click(screen.getByRole('button', { name: 'Colocar aquí' }));
+    expect(enviar).toHaveBeenCalledWith({ tipo: 'COLOCAR_POBLADO_INICIAL', vertice: V2 });
+  });
+
+  it('el botón grande también coloca un camino', async () => {
+    mostrar(
+      juego({
+        vista: vistaDePrueba({ fase: 'PREPARACION_CAMINO', dados: null }),
+        sitios: { caminos: ['a1'] },
+      }),
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'Poner camino en a1' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Colocar aquí' }));
+    expect(enviar).toHaveBeenCalledWith({ tipo: 'COLOCAR_CAMINO_INICIAL', arista: 'a1' });
+  });
+
   it('en la fase del camino se tocan aristas', async () => {
     mostrar(
       juego({

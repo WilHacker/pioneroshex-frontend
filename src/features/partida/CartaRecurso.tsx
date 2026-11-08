@@ -7,7 +7,7 @@ type Props = {
   recurso: Recurso;
   /** El número de la esquina; sin él, la carta no lleva contador. */
   cantidad?: number;
-  tamano?: 'normal' | 'pequena';
+  tamano?: 'normal' | 'pequena' | 'mini';
   /** Resaltada, por ejemplo la carta elegida para un cambio. */
   elegida?: boolean;
   desactivada?: boolean;
@@ -20,8 +20,18 @@ type Props = {
 };
 
 const TAMANOS = {
-  normal: { caja: 'h-[4.6rem] w-[3.3rem]', icono: 34 },
-  pequena: { caja: 'h-[3.1rem] w-[2.3rem]', icono: 24 },
+  normal: { caja: 'h-[4.6rem] w-[3.3rem]', icono: 34, insignia: '-top-2 -right-2 min-w-6 text-xs' },
+  pequena: {
+    caja: 'h-[3.1rem] w-[2.3rem]',
+    icono: 24,
+    insignia: '-top-2 -right-2 min-w-6 text-xs',
+  },
+  /** Para el registro: una carta chica con su número, que cabe en una línea. */
+  mini: {
+    caja: 'h-[2.3rem] w-[1.65rem]',
+    icono: 16,
+    insignia: '-top-1.5 -right-1.5 min-w-4 text-[0.6rem] leading-4',
+  },
 };
 
 const ARCHIVOS_RECURSO: Record<Recurso, string> = {
@@ -43,7 +53,7 @@ export function CartaRecurso({
   etiqueta,
   giro = 0,
 }: Props) {
-  const { caja, icono } = TAMANOS[tamano];
+  const { caja, icono, insignia } = TAMANOS[tamano];
   const color = COLOR_RECURSO[recurso];
   const nombre =
     etiqueta ?? `${cantidad === undefined ? '' : `${cantidad} de `}${NOMBRE_RECURSO[recurso]}`;
@@ -67,7 +77,9 @@ export function CartaRecurso({
         />
       </div>
       {cantidad !== undefined && (
-        <span className="absolute -top-2 -right-2 z-10 flex min-w-6 items-center justify-center rounded-full bg-tinta px-1 text-xs font-extrabold text-white shadow ring-2 ring-white">
+        <span
+          className={`absolute z-10 flex ${insignia} items-center justify-center rounded-full bg-[#2d6bd0] px-1 font-extrabold text-white shadow ring-2 ring-white`}
+        >
           {cantidad}
         </span>
       )}

@@ -12,6 +12,7 @@ import {
 } from '@/lib/tablero';
 import { Casilla, DefinicionesDeCasilla } from './Casilla';
 import { colorDeJugador } from '@/lib/colores';
+import { puertosConectados } from '@/lib/puertos';
 import { Camino, Ciudad, Ladron, Poblado, Puerto } from './PiezasSVG';
 
 /** Qué se puede tocar ahora en el tablero. */
@@ -45,6 +46,12 @@ type Props = {
 const SIN_ARISTAS: readonly string[] = [];
 const RADIO_DE_TOQUE = 0.32;
 
+/** El mar poco profundo y la arena que rodean la isla (anchos en unidades del tablero). */
+const COLOR_MAR_BAJO = '#2f93a6';
+const ANCHO_MAR_BAJO = 1.15;
+const COLOR_PLAYA = '#f1dfa8';
+const ANCHO_PLAYA = 0.42;
+
 const puntos = (lista: readonly Punto[]): string => lista.map((p) => `${p.x},${p.y}`).join(' ');
 
 type TocableProps = {
@@ -77,19 +84,28 @@ function Tocable({ etiqueta, alActivar, presionado, children }: TocableProps) {
   );
 }
 
-/** La marca verde sobre una pieza en vista previa: tocarla de nuevo la coloca. */
+/**
+ * La marca de una pieza en vista previa: tocarla de nuevo la coloca. Es un aro verde alrededor de
+ * la pieza con un visto en una esquina. El aro es lo bastante estrecho para no llegar a la ficha
+ * de ningún número vecino (las fichas están a 1 de cada vértice), y el botón «Colocar aquí» de la
+ * pantalla hace de confirmación grande.
+ */
 function Confirmar({ posicion }: { posicion: Punto }) {
   return (
-    <g transform={`translate(${posicion.x} ${posicion.y - 0.34})`}>
-      <circle r="0.14" fill="#3fae6b" stroke="#fff" strokeWidth="0.035" />
-      <path
-        d="M-0.06 0 L-0.015 0.05 L0.07 -0.05"
-        fill="none"
-        stroke="#fff"
-        strokeWidth="0.045"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
+    <g transform={`translate(${posicion.x} ${posicion.y})`}>
+      <circle r="0.36" fill="none" stroke="#fff" strokeWidth="0.12" />
+      <circle r="0.36" fill="none" stroke="#2f9d5b" strokeWidth="0.07" />
+      <g transform="translate(0.27 -0.27)">
+        <circle r="0.17" fill="#2f9d5b" stroke="#fff" strokeWidth="0.05" />
+        <path
+          d="M-0.08 0 L-0.02 0.07 L0.09 -0.06"
+          fill="none"
+          stroke="#fff"
+          strokeWidth="0.055"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </g>
     </g>
   );
 }
@@ -113,6 +129,7 @@ export function Tablero({
   const posiciones = posicionesDeVertices(mesa);
   const miColor = colorDeJugador(vista.yo ? indiceDe(vista.yo) : 0);
   const legales = new Set(sitios);
+  const conectados = puertosConectados(mesa, vista);
   const caja = cajaDeMesa(mesa);
   const { svgRef, viewBox, nivel, acercar, alejar, verTodo, propiedades } = useZoom(caja, zoom);
 
@@ -126,6 +143,32 @@ export function Tablero({
     >
       <DefinicionesDeCasilla />
 
+      {/* La isla tiene un borde de mar poco profundo y otro de playa, por debajo de las casillas. */}
+      <g data-borde="mar" aria-hidden="true">
+        {mesa.casillas.map((c) => (
+          <polygon
+            key={claveHex(c.hex)}
+            points={puntos(esquinasDeCasilla(c.centro))}
+            fill={COLOR_MAR_BAJO}
+            stroke={COLOR_MAR_BAJO}
+            strokeWidth={ANCHO_MAR_BAJO}
+            strokeLinejoin="round"
+          />
+        ))}
+      </g>
+      <g data-borde="playa" aria-hidden="true">
+        {mesa.casillas.map((c) => (
+          <polygon
+            key={claveHex(c.hex)}
+            points={puntos(esquinasDeCasilla(c.centro))}
+            fill={COLOR_PLAYA}
+            stroke={COLOR_PLAYA}
+            strokeWidth={ANCHO_PLAYA}
+            strokeLinejoin="round"
+          />
+        ))}
+      </g>
+
       {mesa.casillas.map((c) => (
         <Casilla
           key={claveHex(c.hex)}
@@ -138,8 +181,16 @@ export function Tablero({
 
       {mesa.puertos.map((p) => {
         const lugar = posicionDePuerto(p.vertices, posiciones);
+        const mios = conectados.get(p.arista) ?? [];
         return lugar ? (
-          <Puerto key={p.arista} borde={lugar.borde} mar={lugar.mar} tipo={p.tipo} />
+          <Puerto
+            key={p.arista}
+            vertices={lugar.vertices}
+            mar={lugar.mar}
+            afuera={lugar.afuera}
+            tipo={p.tipo}
+            conectados={[mios.includes(p.vertices[0]), mios.includes(p.vertices[1])]}
+          />
         ) : null;
       })}
 

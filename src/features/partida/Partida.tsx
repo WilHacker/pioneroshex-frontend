@@ -12,6 +12,7 @@ import { CartasDesarrollo } from './CartasDesarrollo';
 import { colorDeJugador } from '@/lib/colores';
 import { Comercio } from './Comercio';
 import { Dados } from './Dados';
+import { EntregaDeRecursos } from './EntregaDeRecursos';
 import { efectoDe } from './efectos';
 import { Jugadores } from './Jugadores';
 import {
@@ -119,6 +120,13 @@ export function Partida({ credencial, nombres }: Props) {
   const miMano = vista.jugadores.find((j) => j.id === yo)?.recursos ?? null;
   const puedeTirar = acciones.some((a) => a.tipo === 'TIRAR_DADOS' && a.disponible);
   const terminada = vista.fase === 'FIN';
+  /** Lo que se enviaría al confirmar la vista previa: un camino si es una arista, si no un vértice. */
+  const accionDePrevia =
+    previa === null
+      ? null
+      : mesa.aristas.some((a) => a.id === previa)
+        ? accionDeArista(vista, modo, previa)
+        : accionDeVertice(vista, modo, previa);
 
   const limpiar = (): void => {
     setElegido(null);
@@ -222,7 +230,8 @@ export function Partida({ credencial, nombres }: Props) {
           </p>
         )}
 
-        <div className="relative flex min-h-[24rem] grow items-center justify-center lg:min-h-0">
+        {/* Entre lg y xl el tablero ocupa casi todo el ancho: los dados bajan a su propia fila para no tapar casillas ni puertos. */}
+        <div className="relative flex min-h-[24rem] grow items-center justify-center lg:min-h-0 lg:max-xl:grid lg:max-xl:grid-cols-[minmax(0,1fr)] lg:max-xl:grid-rows-[minmax(0,1fr)_auto]">
           <Tablero
             mesa={mesa}
             vista={vista}
@@ -249,7 +258,7 @@ export function Partida({ credencial, nombres }: Props) {
             />
           </div>
 
-          <div className="absolute right-1 bottom-1 origin-bottom-right scale-60 sm:scale-100">
+          <div className="absolute right-1 bottom-1 origin-bottom-right scale-60 sm:scale-100 lg:max-xl:static lg:max-xl:[zoom:0.7] lg:max-xl:justify-self-end">
             <Dados
               dados={vista.dados}
               tirada={juego.tiradas}
@@ -267,6 +276,18 @@ export function Partida({ credencial, nombres }: Props) {
                 ocupado={ocupado}
                 onDescartar={(recursos) => alAccion({ tipo: 'DESCARTAR_RECURSOS', recursos })}
               />
+            )}
+            {/* Un botón grande fuera del tablero: la marca sobre la pieza es pequeña y puede quedar sobre un número. */}
+            {previa !== null && modo !== 'CARRETERAS' && (
+              <button
+                type="button"
+                disabled={ocupado}
+                onClick={() => void ejecutar(accionDePrevia)}
+                className="flex items-center gap-2 rounded-full bg-hoja px-7 py-3 text-lg font-extrabold text-white shadow-lg ring-4 ring-white/70 enabled:hover:brightness-110 disabled:opacity-40"
+              >
+                <IconoAccion tipo="ACEPTAR" />
+                Colocar aquí
+              </button>
             )}
             {modo === 'CARRETERAS' && (
               <button
@@ -332,6 +353,7 @@ export function Partida({ credencial, nombres }: Props) {
         <div className="relative">
           {comercioAbierto && (
             <Comercio
+              mesa={mesa}
               vista={vista}
               acciones={acciones}
               nombreDe={nombreDe}
@@ -360,11 +382,13 @@ export function Partida({ credencial, nombres }: Props) {
 
       <aside className="flex flex-col gap-3 overflow-y-auto p-3 lg:col-start-2 lg:row-span-2 lg:row-start-1">
         <Banco vista={vista} />
-        <div className="hidden lg:block">
+        <div className="hidden lg:flex lg:min-h-0 lg:flex-1 lg:flex-col">
           <Jugadores vista={vista} nombreDe={nombreDe} indiceDe={indiceDe} />
         </div>
         <Registro eventos={juego.eventos} nombreDe={nombreDe} indiceDe={indiceDe} />
       </aside>
+
+      <EntregaDeRecursos ultimos={juego.ultimos} yo={yo} />
     </div>
   );
 }

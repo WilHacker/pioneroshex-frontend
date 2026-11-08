@@ -2,8 +2,8 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Dado } from '@/components/arte/Dado';
 import { Dado3D, ORIENTACION } from '@/components/arte/Dado3D';
-import type { AccionDisponible, Carta, Trato } from '@/lib/esquemas';
-import { vistaDePrueba } from '@/lib/pruebas';
+import type { AccionDisponible, Cantidades, Carta, Mesa, Trato, Vista } from '@/lib/esquemas';
+import { V1, V2, V3, mesaDePrueba, vistaDePrueba } from '@/lib/pruebas';
 import { Banco } from './Banco';
 import { CartaRecurso } from './CartaRecurso';
 import { CartasDesarrollo } from './CartasDesarrollo';
@@ -36,6 +36,15 @@ describe('CartaRecurso', () => {
   it('desactivada no se puede tocar', () => {
     render(<CartaRecurso recurso="OVEJA" etiqueta="Elegir oveja" desactivada onClick={vi.fn()} />);
     expect(screen.getByRole('button', { name: 'Elegir oveja' })).toBeDisabled();
+  });
+});
+
+describe('CartaRecurso mini', () => {
+  it('es una carta más chica que la pequeña, con su cantidad y su nombre', () => {
+    render(<CartaRecurso recurso="TRIGO" tamano="mini" cantidad={2} />);
+    const carta = screen.getByRole('img', { name: '2 de trigo' });
+    expect(carta).toHaveClass('w-[1.65rem]');
+    expect(carta).toHaveTextContent('2');
   });
 });
 
@@ -219,10 +228,22 @@ describe('Paleta', () => {
     expect(ciudad).toHaveAttribute('title', 'No tienes recursos suficientes');
   });
 
-  it('muestra lo que cuesta cada pieza con los iconos de los recursos', () => {
+  it('muestra lo que cuesta cada pieza con cartas pequeñas de los recursos', () => {
     paleta();
-    expect(screen.getAllByRole('tooltip')).toHaveLength(4);
-    expect(screen.getAllByRole('img', { name: 'Madera' }).length).toBeGreaterThan(0);
+    const costos = screen.getAllByRole('tooltip');
+    expect(costos).toHaveLength(4);
+    // Camino: 1 madera y 1 ladrillo; sin contador cuando es una sola carta.
+    expect(within(costos[0]!).getByRole('img', { name: 'madera' })).toBeInTheDocument();
+    expect(within(costos[0]!).getByRole('img', { name: 'ladrillo' })).toBeInTheDocument();
+    // Ciudad: 2 de trigo y 3 de mineral, con el número en la esquina de la carta.
+    expect(within(costos[2]!).getByRole('img', { name: '2 de trigo' })).toBeInTheDocument();
+    expect(within(costos[2]!).getByRole('img', { name: '3 de mineral' })).toBeInTheDocument();
+  });
+
+  it('el botón de comerciar lleva la carta de intercambio', () => {
+    paleta();
+    const boton = screen.getByRole('button', { name: 'Comerciar' });
+    expect(boton.querySelector('image')).toHaveAttribute('href', '/ui/intercambio.svg');
   });
 
   it('terminar el turno manda la acción', async () => {
@@ -278,6 +299,14 @@ describe('Dados', () => {
       <Dados dados={[2, 6]} tirada={2} puedeTirar={false} ocupado={false} onTirar={vi.fn()} />,
     );
     expect(screen.getByText('8')).toHaveAttribute('title', 'Suma: 8');
+  });
+
+  it('los dados son caras 2D que ruedan, no cubos 3D', () => {
+    const { container } = render(
+      <Dados dados={[3, 4]} tirada={1} puedeTirar={false} ocupado={false} onTirar={vi.fn()} />,
+    );
+    expect(container.querySelector('.dado3d-cubo')).not.toBeInTheDocument();
+    expect(container.querySelectorAll('.dado-rodando')).toHaveLength(2);
   });
 
   it('sin tirada todavía no hay suma', () => {
@@ -386,28 +415,37 @@ describe('CartasDesarrollo', () => {
 });
 
 describe('Comercio', () => {
+  /** Con 4 de cada uno alcanza para cambiar cualquier recurso con la banca sin puerto. */
+  const MUCHAS = { MADERA: 4, LADRILLO: 4, OVEJA: 4, TRIGO: 4, MINERAL: 4 };
   const acciones: AccionDisponible[] = [
     { tipo: 'PROPONER_TRATO', disponible: true },
     { tipo: 'CAMBIAR_CON_BANCA', disponible: true },
   ];
-  const vistaConMano = () => {
+  const MANO = { MADERA: 3, LADRILLO: 0, OVEJA: 1, TRIGO: 0, MINERAL: 0 };
+  const vistaConMano = (recursos: Cantidades = MANO, edificios: Vista['edificios'] = {}) => {
     const base = vistaDePrueba();
     return {
       ...base,
-      jugadores: base.jugadores.map((j) =>
-        j.id === 'j1'
-          ? { ...j, recursos: { MADERA: 3, LADRILLO: 0, OVEJA: 1, TRIGO: 0, MINERAL: 0 } }
-          : j,
-      ),
+      edificios,
+      jugadores: base.jugadores.map((j) => (j.id === 'j1' ? { ...j, recursos } : j)),
     };
   };
 
-  function abrir(parcial: { acciones?: AccionDisponible[]; ocupado?: boolean } = {}) {
+  function abrir(
+    parcial: {
+      acciones?: AccionDisponible[];
+      ocupado?: boolean;
+      mano?: Cantidades;
+      edificios?: Vista['edificios'];
+      mesa?: Mesa;
+    } = {},
+  ) {
     const alAccionar = vi.fn();
     const alCerrar = vi.fn();
     render(
       <Comercio
-        vista={vistaConMano()}
+        mesa={parcial.mesa ?? mesaDePrueba}
+        vista={vistaConMano(parcial.mano, parcial.edificios)}
         acciones={parcial.acciones ?? acciones}
         nombreDe={nombreDe}
         indiceDe={indiceDe}
@@ -418,6 +456,13 @@ describe('Comercio', () => {
     );
     return { alAccionar, alCerrar };
   }
+
+  it('el panel se abre con la carta de intercambio y su título', () => {
+    abrir();
+    const panel = screen.getByRole('region', { name: 'Comerciar' });
+    expect(panel.querySelector('image[href="/ui/intercambio.svg"]')).toBeInTheDocument();
+    expect(within(panel).getByRole('heading', { name: 'Comerciar' })).toBeInTheDocument();
+  });
 
   it('se arma una oferta tocando cartas y se manda a todos', async () => {
     const { alAccionar, alCerrar } = abrir();
@@ -471,8 +516,8 @@ describe('Comercio', () => {
     });
   });
 
-  it('con la banca se elige una carta de cada lado y se cambia', async () => {
-    const { alAccionar } = abrir();
+  it('con la banca se elige un recurso de cada lado y se cambia', async () => {
+    const { alAccionar } = abrir({ mano: MUCHAS });
     await userEvent.click(screen.getByRole('button', { name: 'Banca' }));
     await userEvent.click(screen.getByRole('button', { name: 'Doy: añadir madera' }));
     await userEvent.click(screen.getByRole('button', { name: 'Doy: añadir oveja' }));
@@ -486,11 +531,83 @@ describe('Comercio', () => {
   });
 
   it('con la banca no se puede pedir el mismo recurso que se entrega', async () => {
-    abrir();
+    abrir({ mano: MUCHAS });
     await userEvent.click(screen.getByRole('button', { name: 'Banca' }));
     await userEvent.click(screen.getByRole('button', { name: 'Doy: añadir madera' }));
     await userEvent.click(screen.getByRole('button', { name: 'Pido: añadir madera' }));
     expect(screen.getByRole('button', { name: 'Enviar oferta' })).toBeDisabled();
+  });
+
+  describe('con la banca se cobra según los puertos', () => {
+    const MESA_CON_PUERTOS: Mesa = {
+      ...mesaDePrueba,
+      puertos: [
+        { arista: 'a2', vertices: [V2, V3], tipo: 'GENERICO' },
+        { arista: 'a1', vertices: [V1, V2], tipo: 'MADERA' },
+      ],
+    };
+    const poblado = { dueno: 'j1', tipo: 'POBLADO' as const };
+
+    const cobrado = async (cambios: Parameters<typeof abrir>[0]) => {
+      const { alAccionar } = abrir(cambios);
+      await userEvent.click(screen.getByRole('button', { name: 'Banca' }));
+      return alAccionar;
+    };
+
+    it('sin puerto se dan 4 cartas iguales por 1', async () => {
+      const alAccionar = await cobrado({ mano: MUCHAS });
+      await userEvent.click(screen.getByRole('button', { name: 'Doy: añadir oveja' }));
+      expect(screen.getByRole('button', { name: 'Doy: añadir oveja' })).toHaveTextContent('4');
+      await userEvent.click(screen.getByRole('button', { name: 'Pido: añadir trigo' }));
+      await userEvent.click(screen.getByRole('button', { name: 'Enviar oferta' }));
+      expect(alAccionar).toHaveBeenCalledWith({
+        tipo: 'CAMBIAR_CON_BANCA',
+        entrega: 'OVEJA',
+        recibe: 'TRIGO',
+      });
+    });
+
+    it('un recurso del que tengo menos de 4 queda apagado: no alcanza para la banca', async () => {
+      await cobrado({ mano: { ...MUCHAS, MADERA: 3 } });
+      expect(screen.getByRole('button', { name: 'Doy: añadir madera' })).toBeDisabled();
+      expect(screen.getByRole('button', { name: 'Doy: añadir oveja' })).toBeEnabled();
+    });
+
+    it('con una casa en un puerto genérico se dan 3', async () => {
+      await cobrado({
+        mano: { ...MUCHAS, OVEJA: 3 },
+        mesa: MESA_CON_PUERTOS,
+        edificios: { [V3]: poblado },
+      });
+      await userEvent.click(screen.getByRole('button', { name: 'Doy: añadir oveja' }));
+      expect(screen.getByRole('button', { name: 'Doy: añadir oveja' })).toHaveTextContent('3');
+    });
+
+    it('con una casa en el puerto de un recurso se dan 2 de ese recurso', async () => {
+      await cobrado({
+        mano: { ...MUCHAS, MADERA: 2 },
+        mesa: MESA_CON_PUERTOS,
+        edificios: { [V1]: poblado },
+      });
+      await userEvent.click(screen.getByRole('button', { name: 'Doy: añadir madera' }));
+      expect(screen.getByRole('button', { name: 'Doy: añadir madera' })).toHaveTextContent('2');
+    });
+
+    it('cada carta de «Doy» muestra su razón: 4:1, 3:1 o 2:1', async () => {
+      await cobrado({
+        mano: MUCHAS,
+        mesa: MESA_CON_PUERTOS,
+        edificios: { [V2]: poblado },
+      });
+      // En V2 hay casa: toca el puerto genérico (3:1) y el de madera (2:1).
+      expect(screen.getByTitle('Madera: 2 cartas por 1')).toHaveTextContent('2:1');
+      expect(screen.getByTitle('Oveja: 3 cartas por 1')).toHaveTextContent('3:1');
+    });
+
+    it('la razón solo se muestra al comerciar con la banca', () => {
+      abrir({ mano: MUCHAS });
+      expect(screen.queryByText('4:1')).not.toBeInTheDocument();
+    });
   });
 
   it('cambiar de destino limpia la oferta', async () => {
@@ -595,6 +712,18 @@ describe('Registro', () => {
       />,
     );
 
+  it('es una caja con scroll y guarda mucho más que las últimas jugadas', () => {
+    const eventos = Array.from({ length: 40 }, (_, i) => ({
+      tipo: 'POBLADO_COLOCADO',
+      jugador: i % 2 === 0 ? 'j1' : 'j2',
+    }));
+    dibujar(eventos);
+    expect(screen.getAllByRole('listitem')).toHaveLength(40);
+    const caja = screen.getByRole('region', { name: 'Registro' });
+    expect(caja).toHaveClass('overflow-y-auto');
+    expect(caja).toHaveAttribute('tabindex', '0');
+  });
+
   it('muestra lo último primero y se salta lo que no merece una línea', () => {
     dibujar([
       { tipo: 'POBLADO_COLOCADO', jugador: 'j1' },
@@ -615,7 +744,7 @@ describe('Registro', () => {
     ]);
     expect(screen.getByRole('img', { name: 'Dado: 3' })).toBeInTheDocument();
     expect(screen.getByRole('img', { name: 'Dado: 4' })).toBeInTheDocument();
-    expect(screen.getByRole('img', { name: 'Trigo' })).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: '2 de trigo' })).toBeInTheDocument();
     expect(screen.getByRole('img', { name: 'Ciudad' })).toBeInTheDocument();
   });
 
@@ -636,9 +765,11 @@ describe('Registro', () => {
         pide: { MADERA: 0, LADRILLO: 0, OVEJA: 1, TRIGO: 0, MINERAL: 0 },
       },
     ]);
-    expect(screen.getAllByRole('img', { name: 'Madera' })).toHaveLength(2);
-    expect(screen.getByRole('img', { name: 'Mineral' })).toBeInTheDocument();
-    expect(screen.getByRole('img', { name: 'Oveja' })).toBeInTheDocument();
+    // Cada lado de un cambio o de un trato son cartas pequeñas con su cantidad.
+    expect(screen.getByRole('img', { name: '4 de madera' })).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: '1 de mineral' })).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: '1 de madera' })).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: '1 de oveja' })).toBeInTheDocument();
   });
 
   it('las cartas de desarrollo y la compra tienen su icono', () => {

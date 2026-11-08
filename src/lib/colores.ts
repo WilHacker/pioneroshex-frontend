@@ -19,7 +19,11 @@ export const NOMBRE_TERRENO: Record<Terreno, string> = {
   DESIERTO: 'desierto',
 };
 
-const COLORES_JUGADOR = [
+/**
+ * Un color por jugador para una mesa de hasta 16. Son `#rrggbb` en minúsculas porque nombran la
+ * carpeta de sus piezas en `public/piezas/` (se generan con `pnpm piezas`).
+ */
+export const COLORES_JUGADOR = [
   '#e0344f',
   '#2f6fe0',
   '#2fa84f',
@@ -32,7 +36,11 @@ const COLORES_JUGADOR = [
   '#b8541c',
   '#9a7d0a',
   '#7a2e4d',
-];
+  '#2a3f9e',
+  '#00846b',
+  '#ee6a4a',
+  '#3a424d',
+] as const;
 
 /** Color de un jugador según su lugar en el orden. Siempre va acompañado de su nombre o número. */
 export const colorDeJugador = (indice: number): string =>

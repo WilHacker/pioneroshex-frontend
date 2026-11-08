@@ -1,9 +1,10 @@
 import type { Hex, Mesa, Punto, Vista } from './esquemas';
 
 const RAIZ_DE_3 = Math.sqrt(3);
-const MARGEN = 1.7;
-/** Cuánto sale un puerto hacia el mar desde el punto medio de su arista. */
-const SALIDA_PUERTO = 0.62;
+/** Sitio alrededor de las casillas para el borde de mar, los barcos y sus etiquetas. */
+const MARGEN = 2;
+/** Cuánto sale el barco de un puerto hacia el mar desde el punto medio de su arista. */
+const SALIDA_PUERTO = 1.25;
 
 export const claveHex = (h: Pick<Hex, 'q' | 'r'>): string => `${h.q},${h.r}`;
 
@@ -39,22 +40,31 @@ export function posicionesDeVertices(mesa: Mesa): ReadonlyMap<string, Punto> {
   return new Map(mesa.vertices.map((v) => [v.id, v.posicion]));
 }
 
-/** Dónde dibujar un puerto: el medio de su arista y un punto más afuera, hacia el mar. */
+/**
+ * Dónde dibujar un puerto: los dos vértices que protege, el medio de su arista y el barco más
+ * afuera, hacia el mar. `afuera` es el vector unitario del borde al barco.
+ */
 export function posicionDePuerto(
   vertices: readonly [string, string],
   posiciones: ReadonlyMap<string, Punto>,
-): { readonly borde: Punto; readonly mar: Punto } | null {
+): {
+  readonly vertices: readonly [Punto, Punto];
+  readonly borde: Punto;
+  readonly mar: Punto;
+  readonly afuera: Punto;
+} | null {
   const a = posiciones.get(vertices[0]);
   const b = posiciones.get(vertices[1]);
   if (!a || !b) return null;
   const borde = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
-  const largo = Math.hypot(borde.x, borde.y) || 1;
+  const largo = Math.hypot(borde.x, borde.y);
+  // Un borde justo en el centro no tiene "afuera": se elige arriba para no dividir entre cero.
+  const afuera = largo > 0 ? { x: borde.x / largo, y: borde.y / largo } : { x: 0, y: -1 };
   return {
+    vertices: [a, b],
     borde,
-    mar: {
-      x: borde.x + (borde.x / largo) * SALIDA_PUERTO,
-      y: borde.y + (borde.y / largo) * SALIDA_PUERTO,
-    },
+    mar: { x: borde.x + afuera.x * SALIDA_PUERTO, y: borde.y + afuera.y * SALIDA_PUERTO },
+    afuera,
   };
 }
 

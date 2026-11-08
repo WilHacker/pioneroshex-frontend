@@ -49,6 +49,19 @@ describe('posicionDePuerto', () => {
     expect(Math.hypot(p.mar.x, p.mar.y)).toBeGreaterThan(Math.hypot(p.borde.x, p.borde.y));
   });
 
+  it('devuelve los dos vértices que protege, para unirlos al barco con un muelle cada uno', () => {
+    const p = posicionDePuerto([V2, V3], posiciones)!;
+    expect(p.vertices).toEqual([posiciones.get(V2), posiciones.get(V3)]);
+  });
+
+  it('da la dirección hacia el mar como un vector de largo 1 que apunta del borde al barco', () => {
+    const p = posicionDePuerto([V2, V3], posiciones)!;
+    expect(Math.hypot(p.afuera.x, p.afuera.y)).toBeCloseTo(1);
+    const largo = Math.hypot(p.mar.x - p.borde.x, p.mar.y - p.borde.y);
+    expect(p.mar.x).toBeCloseTo(p.borde.x + p.afuera.x * largo);
+    expect(p.mar.y).toBeCloseTo(p.borde.y + p.afuera.y * largo);
+  });
+
   it('devuelve null si un vértice no existe', () => {
     expect(posicionDePuerto([V1, 'no-existe'], posiciones)).toBeNull();
   });

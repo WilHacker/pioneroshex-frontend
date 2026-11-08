@@ -135,7 +135,7 @@ body {
 }
 
 .suma-aparece {
-  animation: aparece 0.35s cubic-bezier(0.3, 1.5, 0.5, 1) 0.8s both;
+  animation: aparece 0.35s cubic-bezier(0.3, 1.5, 0.5, 1) 0.35s both;
 }
 
 .entrega {

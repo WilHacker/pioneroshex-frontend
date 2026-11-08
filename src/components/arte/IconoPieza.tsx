@@ -1,3 +1,5 @@
+import { archivoDePieza } from '@/lib/piezas';
+
 export type TipoPieza = 'CAMINO' | 'POBLADO' | 'CIUDAD' | 'CARTA';
 
 type Props = {
@@ -22,51 +24,26 @@ export function oscurecer(color: string, factor = 0.62): string {
   return `#${canal(0)}${canal(1)}${canal(2)}`;
 }
 
-/** Las piezas de construcción como iconos de interfaz, en un cuadro de 32 por 32. */
+/**
+ * Las piezas de construcción como iconos de interfaz, en un cuadro de 32 por 32: el mismo arte del
+ * tablero en el color del jugador. La carta de desarrollo es su reverso morado.
+ */
 export function IconoPieza({ pieza, color, tamano = 28 }: Props) {
-  const borde = oscurecer(color);
   return (
     <svg viewBox="0 0 32 32" width={tamano} height={tamano} role="img" aria-label={NOMBRES[pieza]}>
       {pieza === 'CAMINO' && (
-        <g transform="rotate(-35 16 16)">
-          <rect x="2" y="11.5" width="28" height="9" rx="2.5" fill={borde} />
-          <rect x="3" y="12.5" width="26" height="7" rx="2" fill={color} />
-          <rect x="4.5" y="13.2" width="23" height="2" rx="1" fill="#ffffff" opacity="0.28" />
+        <g transform="rotate(-55 16 16)">
+          <image href={archivoDePieza('camino', color)} x="13.4" y="2" width="5.2" height="28" />
         </g>
       )}
       {pieza === 'POBLADO' && (
-        <>
-          <polygon points="16,3 28,13 28,28 4,28 4,13" fill={borde} />
-          <polygon points="16,5.5 26,14 26,26 6,26 6,14" fill={color} />
-          <rect x="13" y="17" width="6" height="9" rx="1" fill={borde} />
-          <polygon points="16,5.5 26,14 16,12" fill="#ffffff" opacity="0.25" />
-        </>
+        <image href={archivoDePieza('poblado', color)} x="1" y="1" width="30" height="30" />
       )}
       {pieza === 'CIUDAD' && (
-        <>
-          <polygon points="2,28 2,15 10,9 18,15 18,28" fill={borde} />
-          <polygon points="4,26 4,16 10,11.5 16,16 16,26" fill={color} />
-          <rect x="18" y="12" width="12" height="16" fill={borde} />
-          <rect x="20" y="14" width="8" height="12" fill={color} />
-          <rect x="18" y="8" width="12" height="4" fill={borde} />
-          <rect x="22" y="17" width="3" height="3.5" fill="#fff6d1" />
-          <rect x="7" y="19" width="4" height="7" rx="1" fill={borde} />
-        </>
+        <image href={archivoDePieza('ciudad', color)} x="1" y="1" width="30" height="30" />
       )}
       {pieza === 'CARTA' && (
-        <>
-          <rect x="6" y="2" width="20" height="28" rx="3.5" fill={borde} />
-          <rect x="7.5" y="3.5" width="17" height="25" rx="2.5" fill={color} />
-          <circle cx="16" cy="16" r="6" fill="#ffffff" opacity="0.9" />
-          <path
-            d="M13.5 14.2a2.6 2.6 0 1 1 3.6 2.4c-.8.4-1.1.8-1.1 1.6"
-            fill="none"
-            stroke={borde}
-            strokeWidth="1.6"
-            strokeLinecap="round"
-          />
-          <circle cx="16" cy="20.4" r="0.95" fill={borde} />
-        </>
+        <image href="/cartas/reverso-desarrollo.svg" x="5" y="1" width="22" height="30" />
       )}
     </svg>
   );

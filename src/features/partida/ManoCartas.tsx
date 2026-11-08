@@ -10,12 +10,23 @@ type Props = {
 export function ManoCartas({ recursos }: Props) {
   const tengo = recursos ? RECURSOS.filter((r) => recursos[r] > 0) : [];
   if (!recursos || tengo.length === 0) {
-    return <p className="px-3 text-sm text-white/80">Tu mano está vacía</p>;
+    return (
+      <p
+        data-mano-recursos=""
+        className="rounded-xl border-[3px] border-[#101c28] bg-[#f5efe0] px-4 py-3 text-sm text-tinta shadow"
+      >
+        Tu mano está vacía
+      </p>
+    );
   }
   return (
-    <ul aria-label="Tu mano" className="flex items-end pl-2">
+    <ul
+      aria-label="Tu mano"
+      data-mano-recursos=""
+      className="flex items-end rounded-xl border-[3px] border-[#101c28] bg-[#f5efe0] px-4 pt-3 pb-2 shadow"
+    >
       {tengo.map((r, i) => (
-        <li key={r} className="-ml-2 first:ml-0">
+        <li key={r} className="-ml-3 first:ml-0">
           <CartaRecurso
             recurso={r}
             cantidad={recursos[r]}
