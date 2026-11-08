@@ -103,7 +103,7 @@ export function Portada({ tablero }: Props) {
       <header className="flex w-full max-w-5xl items-center justify-between py-4">
         <div className="flex items-center gap-2.5">
           <Image
-            src="/ui/logo-cuadrado.png"
+            src="/ui/logo-pioneroshex.svg"
             alt=""
             width={32}
             height={32}
