@@ -1,12 +1,25 @@
 'use client';
 
-import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from 'react';
 
 type Props = {
   /** Lo que se explica: da nombre al botón para los lectores de pantalla. */
   tema: string;
   children: ReactNode;
 };
+
+const MARGEN_PX = 8;
+
+/** Si el globo se sale de la pantalla por un lado, lo desplaza lo justo para que quepa. */
+function mantenerEnPantalla(globo: HTMLElement): void {
+  globo.style.marginLeft = '0px';
+  const { left, right } = globo.getBoundingClientRect();
+  const ancho = document.documentElement.clientWidth;
+  let desplazamiento = 0;
+  if (left < MARGEN_PX) desplazamiento = MARGEN_PX - left;
+  else if (right > ancho - MARGEN_PX) desplazamiento = ancho - MARGEN_PX - right;
+  globo.style.marginLeft = `${Math.round(desplazamiento)}px`;
+}
 
 /**
  * Un icono ⓘ que explica un ajuste. Se abre con clic, toque o teclado (a diferencia de `title`, que
@@ -16,6 +29,10 @@ export function Ayuda({ tema, children }: Props) {
   const [abierta, setAbierta] = useState(false);
   const raiz = useRef<HTMLSpanElement>(null);
   const id = useId();
+  // Estable a propósito: React vuelve a llamar a una referencia nueva en cada render y recolocaría el globo.
+  const colocar = useCallback((globo: HTMLSpanElement | null) => {
+    if (globo) mantenerEnPantalla(globo);
+  }, []);
 
   useEffect(() => {
     if (!abierta) return;
@@ -41,12 +58,13 @@ export function Ayuda({ tema, children }: Props) {
         aria-expanded={abierta}
         aria-controls={abierta ? id : undefined}
         onClick={() => setAbierta((v) => !v)}
-        className="inline-flex size-5 items-center justify-center rounded-full border-2 border-current text-xs leading-none font-extrabold opacity-70 transition hover:opacity-100 focus-visible:opacity-100"
+        className="inline-flex size-5 items-center justify-center rounded-full border-2 border-current text-xs leading-none font-extrabold opacity-70 transition hover:opacity-100 focus-visible:opacity-100 pointer-coarse:size-8"
       >
         i
       </button>
       {abierta && (
         <span
+          ref={colocar}
           id={id}
           role="note"
           className="absolute top-full left-1/2 z-20 mt-2 w-64 max-w-[80vw] -translate-x-1/2 rounded-xl bg-tinta p-3 text-left text-sm leading-snug font-medium text-espuma shadow-xl"

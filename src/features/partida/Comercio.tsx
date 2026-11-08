@@ -188,7 +188,7 @@ export function Comercio({
   return (
     <section
       aria-label="Comerciar"
-      className="absolute right-0 bottom-full z-30 mb-3 flex w-[min(33rem,94vw)] flex-col gap-3 rounded-2xl border-2 border-azafran bg-niebla p-3 text-tinta shadow-2xl"
+      className="fixed inset-x-0 bottom-2 z-40 mx-auto flex max-h-[calc(100dvh-1rem)] w-[calc(100%-1rem)] max-w-[33rem] flex-col gap-3 overflow-y-auto rounded-2xl border-2 border-azafran bg-niebla p-3 text-tinta shadow-2xl lg:absolute lg:inset-x-auto lg:right-0 lg:bottom-full lg:z-30 lg:mx-0 lg:mb-3 lg:max-h-none lg:w-[min(33rem,94vw)] lg:overflow-visible"
     >
       <header className="flex items-center gap-2">
         <IconoIntercambio tamano={36} />

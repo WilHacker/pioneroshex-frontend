@@ -22,7 +22,7 @@ export function TiraDeJugadores({ vista, nombreDe, indiceDe, presencia = null }:
   return (
     <ul
       aria-label="Resumen de jugadores"
-      className="-mx-3 flex [scrollbar-width:none] gap-1.5 overflow-x-auto px-3 pb-1 lg:hidden"
+      className="relative -mx-3 flex shrink-0 [scrollbar-width:none] gap-1.5 overflow-x-auto px-3 pb-1 lg:hidden"
     >
       {vista.jugadores.map((j) => {
         const enTurno = j.id === turno;

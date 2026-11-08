@@ -11,10 +11,16 @@ export function PanelCuenta({ titulo, children }: Props) {
   return (
     <main className="mar flex flex-1 flex-col items-center gap-4 p-4 text-white">
       <header className="flex w-full max-w-xl items-center justify-between py-2">
-        <Link href="/" className="text-2xl font-extrabold tracking-tight">
+        <Link
+          href="/"
+          className="inline-flex min-h-10 items-center text-2xl font-extrabold tracking-tight"
+        >
           PionerosHex
         </Link>
-        <Link href="/jugar" className="font-bold text-white/80 underline">
+        <Link
+          href="/jugar"
+          className="inline-flex min-h-10 items-center font-bold text-white/80 underline"
+        >
           Jugar
         </Link>
       </header>

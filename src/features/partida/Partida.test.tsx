@@ -6,6 +6,7 @@ import { Partida } from './Partida';
 import { useJuego, type Juego } from './useJuego';
 
 vi.mock('./useJuego');
+vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }));
 
 const { sonido } = vi.hoisted(() => ({
   sonido: { reproducir: vi.fn(), silenciado: false, alternarSilencio: vi.fn() },

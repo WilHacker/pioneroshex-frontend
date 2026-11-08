@@ -1,7 +1,8 @@
 import { io } from 'socket.io-client';
 import { z } from 'zod';
 import { env } from '@/config/env';
-import { esquemaSalaAbierta, esquemaSalaPublica, type SalaPublica } from './esquemas';
+import { esquemaSalaAbierta, esquemaSalaPublica } from './esquemas';
+import { esquemaResumen } from './salas';
 
 /**
  * La sala de espera y la portada reciben lo que cambia por un socket (namespace `/lobby`) en lugar de
@@ -15,11 +16,7 @@ export type SalaEnVivo = z.infer<typeof esquemaSalaEnVivo>;
 
 const esquemaPortada = z.object({
   salas: z.array(esquemaSalaAbierta),
-  resumen: z.object({
-    salasAbiertas: z.number(),
-    partidasEnCurso: z.number(),
-    jugadores: z.number(),
-  }),
+  resumen: esquemaResumen,
 });
 export type PortadaEnVivo = z.infer<typeof esquemaPortada>;
 
@@ -98,5 +95,3 @@ export function suscribirPortada(m: ManejadoresDePortada): () => void {
     socket.disconnect();
   };
 }
-
-export type { SalaPublica };

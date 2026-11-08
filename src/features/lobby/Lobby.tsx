@@ -180,11 +180,17 @@ export function Lobby() {
           </label>
           <p className="-mt-2 text-sm text-tinta/70">
             ¿Quieres guardar tus partidas?{' '}
-            <Link href="/entrar" className="font-bold text-mar-laguna underline">
+            <Link
+              href="/entrar"
+              className="inline-flex min-h-8 items-center font-bold text-mar-laguna underline"
+            >
               Entrar
             </Link>{' '}
             o{' '}
-            <Link href="/registro" className="font-bold text-mar-laguna underline">
+            <Link
+              href="/registro"
+              className="inline-flex min-h-8 items-center font-bold text-mar-laguna underline"
+            >
               crear cuenta
             </Link>
             .
@@ -206,7 +212,7 @@ export function Lobby() {
             aria-selected={pestana === p.id}
             aria-controls="panel-lobby"
             onClick={() => setPestana(p.id)}
-            className={`flex-1 rounded-full px-3 py-1.5 text-sm font-extrabold transition ${
+            className={`min-h-10 flex-1 rounded-full px-3 py-1.5 text-sm font-extrabold transition ${
               pestana === p.id ? 'bg-tinta text-white shadow' : 'text-tinta/70 hover:text-tinta'
             }`}
           >
@@ -262,7 +268,10 @@ export function Lobby() {
           {error}
         </p>
       )}
-      <Link href="/" className="self-center text-sm font-bold text-tinta/70 underline">
+      <Link
+        href="/"
+        className="inline-flex min-h-10 items-center self-center text-sm font-bold text-tinta/70 underline"
+      >
         Volver al inicio
       </Link>
     </section>

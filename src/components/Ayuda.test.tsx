@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Ayuda } from './Ayuda';
 
 const dibujar = () =>
@@ -73,5 +73,50 @@ describe('Ayuda', () => {
     // Abrir la segunda cierra la primera: solo hay una explicación a la vez.
     expect(screen.queryByText('uno')).not.toBeInTheDocument();
     expect(screen.getByText('dos')).toBeInTheDocument();
+  });
+});
+
+describe('Ayuda: el globo no se sale de la pantalla', () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  const conGlobo = (left: number, right: number): void => {
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (
+      this: HTMLElement,
+    ) {
+      const esGlobo = this.getAttribute('role') === 'note';
+      return {
+        left: esGlobo ? left : 0,
+        right: esGlobo ? right : 0,
+        top: 0,
+        bottom: 0,
+        width: 0,
+        height: 0,
+        x: 0,
+        y: 0,
+        toJSON: () => ({}),
+      };
+    });
+    vi.spyOn(document.documentElement, 'clientWidth', 'get').mockReturnValue(320);
+  };
+
+  it('si queda cortado por la izquierda, lo desplaza hasta dejar 8 px de margen', async () => {
+    conGlobo(-30, 226);
+    dibujar();
+    await userEvent.click(screen.getByRole('button', { name: /Puntos para ganar/ }));
+    expect(screen.getByRole('note').style.marginLeft).toBe('38px');
+  });
+
+  it('si queda cortado por la derecha, lo desplaza hacia la izquierda', async () => {
+    conGlobo(100, 356);
+    dibujar();
+    await userEvent.click(screen.getByRole('button', { name: /Puntos para ganar/ }));
+    expect(screen.getByRole('note').style.marginLeft).toBe('-44px');
+  });
+
+  it('si ya cabe, no lo mueve', async () => {
+    conGlobo(20, 276);
+    dibujar();
+    await userEvent.click(screen.getByRole('button', { name: /Puntos para ganar/ }));
+    expect(screen.getByRole('note').style.marginLeft).toBe('0px');
   });
 });

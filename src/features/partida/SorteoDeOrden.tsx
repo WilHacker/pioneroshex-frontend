@@ -59,6 +59,8 @@ export function SorteoDeOrden({ sorteo, orden, nombreDe, onCerrar }: Props) {
 
         {sorteo.map((ronda, r) =>
           inicios[r]! < reveladas || terminado ? (
+            // Las rondas solo se añaden al final y no tienen id propio: el índice es estable.
+            // oxlint-disable-next-line react/no-array-index-key
             <section key={r} className="flex flex-col gap-1.5">
               <h3 className="text-sm font-extrabold">{tituloDeRonda(r)}</h3>
               <ul className="flex flex-col gap-1">

@@ -13,6 +13,6 @@ export const BOTON_SECUNDARIO =
 export const BOTON_PELIGRO =
   'rounded-full bg-coral px-5 py-2 font-extrabold text-white transition enabled:hover:brightness-110 disabled:opacity-40';
 
-export const ENLACE = 'font-bold text-mar-laguna underline';
+export const ENLACE = 'inline-flex min-h-8 items-center font-bold text-mar-laguna underline';
 
 export const AVISO = 'rounded-xl bg-coral/15 px-3 py-2 text-sm font-bold text-coral';

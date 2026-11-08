@@ -45,7 +45,7 @@ function Contador({ icono, valor, etiqueta }: ContadorProps) {
 }
 
 const CARTA =
-  'group relative flex w-full flex-col items-center gap-2 rounded-2xl border-b-8 bg-niebla px-4 py-5 text-tinta shadow-xl transition sm:w-52';
+  'group relative flex w-full flex-col items-center gap-2 rounded-2xl border-b-8 bg-niebla px-4 py-5 text-tinta shadow-xl transition sm:w-44 md:w-52';
 
 /** Las tres maneras de entrar, como cartas. Las cuentas llegan después: por ahora solo avisan. */
 function Cartas({ conSesion }: { conSesion: boolean }) {
@@ -91,7 +91,7 @@ export function Portada({ tablero }: Props) {
 
   return (
     <div className="mar flex flex-1 flex-col items-center gap-8 px-4 pb-12 text-white">
-      <header className="flex w-full max-w-5xl items-center justify-between py-4">
+      <header className="flex w-full max-w-5xl flex-wrap items-center justify-between gap-x-4 gap-y-2 py-4">
         <div className="flex items-center gap-2.5">
           <Image
             src="/ui/logo-pioneroshex.svg"
@@ -100,13 +100,13 @@ export function Portada({ tablero }: Props) {
             height={32}
             className="rounded-lg shadow"
           />
-          <p className="text-2xl font-extrabold tracking-tight">PionerosHex</p>
+          <p className="text-xl font-extrabold tracking-tight sm:text-2xl">PionerosHex</p>
         </div>
         <nav aria-label="Cuenta" className="flex gap-2">
           {usuario ? (
             <Link
               href="/perfil"
-              className="rounded-full bg-white/15 px-4 py-2 font-bold text-white hover:bg-white/25"
+              className="rounded-full bg-white/15 px-3 py-2 font-bold text-white hover:bg-white/25 sm:px-4"
             >
               {usuario.nombre}
             </Link>
@@ -114,13 +114,13 @@ export function Portada({ tablero }: Props) {
             <>
               <Link
                 href="/entrar"
-                className="rounded-full px-4 py-2 font-bold text-white hover:bg-white/10"
+                className="rounded-full px-3 py-2 font-bold text-white hover:bg-white/10 sm:px-4"
               >
                 Entrar
               </Link>
               <Link
                 href="/registro"
-                className="rounded-full bg-white/15 px-4 py-2 font-bold text-white hover:bg-white/25"
+                className="rounded-full bg-white/15 px-3 py-2 font-bold text-white hover:bg-white/25 sm:px-4"
               >
                 Crear cuenta
               </Link>

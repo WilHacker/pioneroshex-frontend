@@ -3,14 +3,10 @@ import {
   esquemaCredencial,
   esquemaInfoDeMapa,
   esquemaRecomendado,
-  esquemaSalaAbierta,
-  esquemaSalaPublica,
   type Credencial,
   type InfoDeMapa,
   type OpcionesDeSala,
   type Recomendado,
-  type SalaAbierta,
-  type SalaPublica,
 } from './esquemas';
 import { llamar } from './http';
 
@@ -46,11 +42,6 @@ export async function listarMapas(signal?: AbortSignal): Promise<InfoDeMapa[]> {
   return (await llamar('/mapas', { metodo: 'GET', signal }, z.array(esquemaInfoDeMapa)))!;
 }
 
-/** Las salas públicas que esperan jugadores. */
-export async function listarSalas(signal?: AbortSignal): Promise<SalaAbierta[]> {
-  return (await llamar('/salas', { metodo: 'GET', signal }, z.array(esquemaSalaAbierta)))!;
-}
-
 /** El anfitrión cambia la visibilidad o las reglas de su sala antes de empezar. */
 export async function cambiarSala(
   salaId: string,
@@ -66,21 +57,20 @@ export async function unirseASala(salaId: string, nombre: string): Promise<Crede
   return (await llamar(ruta, { metodo: 'POST', cuerpo: { nombre } }, esquemaCredencial))!;
 }
 
-export async function verSala(salaId: string, signal?: AbortSignal): Promise<SalaPublica> {
-  const ruta = `/salas/${encodeURIComponent(salaId)}`;
-  return (await llamar(ruta, { metodo: 'GET', signal }, esquemaSalaPublica))!;
-}
-
-const esquemaResumen = z.object({
+export const esquemaResumen = z.object({
   salasAbiertas: z.number(),
   partidasEnCurso: z.number(),
   jugadores: z.number(),
 });
 export type ResumenDeSalas = z.infer<typeof esquemaResumen>;
 
-/** Cuántas salas y jugadores hay ahora mismo (solo números; sirve para la portada). */
-export async function verResumen(signal?: AbortSignal): Promise<ResumenDeSalas> {
-  return (await llamar('/salas/resumen', { metodo: 'GET', signal }, esquemaResumen))!;
+/**
+ * Terminada la partida, abre (o se une a) la sala de revancha y devuelve tu credencial en ella: el
+ * servidor junta en la misma sala a quienes la piden.
+ */
+export async function pedirRevancha(salaId: string, token: string): Promise<Credencial> {
+  const ruta = `/salas/${encodeURIComponent(salaId)}/revancha`;
+  return (await llamar(ruta, { metodo: 'POST', token }, esquemaCredencial))!;
 }
 
 export async function empezarSala(

@@ -1,5 +1,9 @@
 @import 'tailwindcss';
 
+/* Teléfono en horizontal: poca altura y menos de 1024 px de ancho. La partida usa entonces dos columnas
+   (tablero a toda la altura y una columna lateral), como en el escritorio pero con la columna estrecha. */
+@custom-variant apaisado (@media (orientation: landscape) and (max-height: 32rem) and (max-width: 63.999rem));
+
 /*
  * Base visual de PionerosHex. Mar profundo de noche, paneles de niebla con tinta de pino y un solo
  * color de acción (azafrán). Los terrenos y los jugadores tienen su propia paleta en el código del

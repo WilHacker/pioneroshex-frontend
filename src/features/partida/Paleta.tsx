@@ -36,7 +36,7 @@ const ELEMENTOS: readonly Elemento[] = [
 ];
 
 const BOTON =
-  'relative flex size-12 items-center justify-center rounded-2xl border-[3px] shadow-md ring-2 ring-[#101c28] sm:size-16 transition enabled:hover:-translate-y-1 disabled:opacity-45';
+  'relative flex size-10 min-[340px]:size-11 min-[360px]:size-12 items-center justify-center rounded-2xl border-[3px] shadow-md ring-2 ring-[#101c28] sm:size-16 apaisado:size-11 transition enabled:hover:-translate-y-1 disabled:opacity-45';
 
 /** Los botones son celestes con borde blanco; el modo elegido se pone azafrán. */
 const CELESTE = 'border-white bg-gradient-to-b from-[#9bdcf2] to-[#4fb0d6]';
@@ -157,7 +157,7 @@ export function Paleta({
               : textoDeMotivo(terminar?.motivo ?? 'NO_ES_TU_TURNO')
           }
           onClick={() => onAccion({ tipo: 'TERMINAR_TURNO' })}
-          className="flex size-12 items-center justify-center rounded-2xl bg-azafran text-tinta shadow-md transition enabled:hover:-translate-y-1 enabled:hover:bg-azafran-claro disabled:opacity-40 sm:size-16"
+          className="flex size-11 items-center justify-center rounded-2xl bg-azafran text-tinta shadow-md transition enabled:hover:-translate-y-1 enabled:hover:bg-azafran-claro disabled:opacity-40 min-[360px]:size-12 sm:size-16 apaisado:size-11"
         >
           <IconoAccion tipo="ESPERA" tamano={32} />
         </button>

@@ -116,8 +116,8 @@ describe('cartas a la vista', () => {
 
   it('si la mano de un rival llega, se enseñan sus cartas por recurso', () => {
     const { container } = dibujar({ MADERA: 2, LADRILLO: 0, OVEJA: 1, TRIGO: 0, MINERAL: 0 });
-    const fila = container.querySelector<HTMLElement>('[data-jugador-id="j2"]')!;
-    const mano = within(fila).getByLabelText('Cartas en mano');
+    const delJ2 = fila(container, 'j2');
+    const mano = within(delJ2).getByLabelText('Cartas en mano');
     expect(within(mano).getByText('2 de madera')).toBeInTheDocument();
     expect(within(mano).getByText('1 de oveja')).toBeInTheDocument();
     expect(within(mano).queryByLabelText(/ladrillo/)).not.toBeInTheDocument();
@@ -125,13 +125,13 @@ describe('cartas a la vista', () => {
 
   it('si no llega (lo normal), no se enseña nada de su mano', () => {
     const { container } = dibujar(null);
-    const fila = container.querySelector<HTMLElement>('[data-jugador-id="j2"]')!;
-    expect(within(fila).queryByLabelText('Cartas en mano')).not.toBeInTheDocument();
+    const delJ2 = fila(container, 'j2');
+    expect(within(delJ2).queryByLabelText('Cartas en mano')).not.toBeInTheDocument();
   });
 
   it('una mano vacía lo dice en vez de quedarse en blanco', () => {
     const { container } = dibujar({ MADERA: 0, LADRILLO: 0, OVEJA: 0, TRIGO: 0, MINERAL: 0 });
-    const fila = container.querySelector<HTMLElement>('[data-jugador-id="j2"]')!;
-    expect(within(fila).getByLabelText('Cartas en mano')).toHaveTextContent(/sin cartas/i);
+    const delJ2 = fila(container, 'j2');
+    expect(within(delJ2).getByLabelText('Cartas en mano')).toHaveTextContent(/sin cartas/i);
   });
 });

@@ -99,6 +99,18 @@ Estado del cliente (se instala cuando haga falta, no antes):
   SVG del tablero se convierten a mapas de bits una sola vez (`src/lib/bitmaps.ts`), porque una
   `<image>` con un SVG dentro se vuelve a dibujar completa con cada cambio de escala. Para medir:
   `PerformanceObserver` de `long-animation-frame` mientras se simulan ruedas, alternando variantes.
+- **Todo debe funcionar de 320 px a 1920 px** (teléfono vertical y horizontal, tablet, portátil y escritorio). En la
+  partida hay tres repartos: una columna con pie fijo (menos de `lg`, 1024 px), dos columnas con la lateral de
+  24 rem (`lg` en adelante) y la variante `apaisado` de `globals.css` (horizontal, hasta 512 px de alto y menos
+  de 1024 de ancho: tablero a toda la altura y a la derecha el pie con la mano y los controles, y debajo banco y
+  registro). Al tocar la pantalla de partida hay que revisarla en 375×667, 667×375, 768×1024, 1024×768 y
+  1920×1080. **Trampa:** un `sr-only` (posición absoluta) dentro de una lista con `overflow-x-auto` escapa del
+  recorte si la lista no es `relative` y ensancha toda la pantalla (la tira de jugadores lo hacía). Las zonas
+  táctiles miden al menos 40 px (en controles pequeños con `pointer-coarse:`) y el texto legible, 12 px.
+  En teléfono vertical el tablero y el pie (mano y botones) se reparten la altura de la pantalla y el banco y el
+  registro quedan debajo; los paneles que antes eran globos (comercio) son hojas `fixed` por debajo de `lg`. Un
+  `backdrop-filter` en un ancestro vuelve a ese ancestro el contenedor de los `fixed`. Los globos `Ayuda` se
+  recolocan solos para no salirse. Al revisar, **abrir** los paneles (comerciar, ayudas, diálogos) y medir sus cajas.
 - **Los puertos deben verse bien en los 15 mapas**, también los irregulares (lagos, canales, islas):
   `posicionDePuerto` saca el barco hacia afuera de la casilla de su arista (no desde el centro del
   tablero) y lo acerca a la costa si al otro lado hay otra casilla. Al tocar eso, revisar los mapas
@@ -140,6 +152,7 @@ Estado del cliente (se instala cuando haga falta, no antes):
   peticiones por minuto. Cliente en `src/lib/salas.ts`.
 - **Sala de espera, lobby y portada por socket** (namespace `/lobby`, `src/lib/lobby.ts`): `suscribirSala` y
   `suscribirPortada` reemplazan al sondeo; las acciones siguen por HTTP. Los componentes no abren sockets.
+- **Revancha:** `pedirRevancha` (`lib/salas.ts`) desde `PantallaFinal`: guarda la credencial nueva y va a `/sala/<nueva>`.
 - Partida por socket.io: `juego:accion` (con acuse), `juego:inicio`, `juego:notificacion`,
   `juego:error`. Esquemas Zod duplicados en `src/lib/esquemas.ts`; el protocolo completo está en la
   nota `Contrato-de-Red` del vault de Obsidian.

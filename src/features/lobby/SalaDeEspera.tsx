@@ -141,7 +141,7 @@ function Invitar({ salaId }: { salaId: string }) {
 }
 
 const BOTON_ASIENTO =
-  'rounded-full bg-tinta/10 px-2 py-0.5 text-xs font-extrabold transition hover:bg-tinta/20 disabled:opacity-40';
+  'rounded-full bg-tinta/10 px-2 py-0.5 text-xs font-extrabold transition hover:bg-tinta/20 pointer-coarse:min-h-10 pointer-coarse:min-w-10 disabled:opacity-40';
 
 /** Lo que el anfitrión puede hacer con otro jugador antes de empezar. */
 function AccionesDeAnfitrion({
@@ -369,7 +369,10 @@ export function SalaDeEspera({ salaId, onEmpezada }: Props) {
   return (
     <main className="mar flex flex-1 flex-col items-center gap-4 p-4 text-white">
       <header className="flex w-full max-w-2xl items-center justify-between py-2">
-        <Link href="/" className="text-2xl font-extrabold tracking-tight">
+        <Link
+          href="/"
+          className="inline-flex min-h-10 items-center text-2xl font-extrabold tracking-tight"
+        >
           PionerosHex
         </Link>
         {credencial && !sala.empezada ? (
@@ -377,12 +380,15 @@ export function SalaDeEspera({ salaId, onEmpezada }: Props) {
             type="button"
             disabled={ocupado}
             onClick={() => void salir()}
-            className="font-bold text-white/80 underline disabled:opacity-50"
+            className="inline-flex min-h-10 items-center font-bold text-white/80 underline disabled:opacity-50"
           >
             Salir de la sala
           </button>
         ) : (
-          <Link href="/jugar" className="font-bold text-white/80 underline">
+          <Link
+            href="/jugar"
+            className="inline-flex min-h-10 items-center font-bold text-white/80 underline"
+          >
             Salir
           </Link>
         )}

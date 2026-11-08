@@ -6,11 +6,9 @@ import {
   ErrorApi,
   expulsarDeSala,
   listarMapas,
-  listarSalas,
+  pedirRevancha,
   salirDeSala,
   unirseASala,
-  verResumen,
-  verSala,
 } from './salas';
 
 const credencial = { salaId: 'abcd1234', jugadorId: 'j1', token: 'secreto' };
@@ -63,7 +61,7 @@ describe('errores del servidor', () => {
 
   it('si el error no trae mensaje, dice el código', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('boom', { status: 500 }));
-    await expect(verSala('x')).rejects.toMatchObject({ message: 'El servidor respondió 500' });
+    await expect(listarMapas()).rejects.toMatchObject({ message: 'El servidor respondió 500' });
   });
 
   it('si no hay red, avisa que no se pudo conectar', async () => {
@@ -78,11 +76,11 @@ describe('errores del servidor', () => {
     const controlador = new AbortController();
     controlador.abort();
     vi.spyOn(globalThis, 'fetch').mockRejectedValue(new DOMException('abortado', 'AbortError'));
-    await expect(verSala('x', controlador.signal)).rejects.toMatchObject({ name: 'AbortError' });
+    await expect(listarMapas(controlador.signal)).rejects.toMatchObject({ name: 'AbortError' });
   });
 });
 
-describe('unirseASala y verSala', () => {
+describe('unirseASala', () => {
   it('escapan el id en la ruta', async () => {
     responder(credencial, 201);
     await unirseASala('a/b', 'Ana');
@@ -90,20 +88,6 @@ describe('unirseASala y verSala', () => {
       'http://localhost:3001/salas/a%2Fb/unirse',
       expect.anything(),
     );
-  });
-
-  it('verSala valida la forma pública de la sala', async () => {
-    const sala = {
-      id: 'abcd1234',
-      empezada: false,
-      anfitrion: 'j1',
-      jugadores: [{ id: 'j1', nombre: 'Ana' }],
-      publica: false,
-      maximo: 12,
-      opciones: {},
-    };
-    responder(sala);
-    await expect(verSala('abcd1234')).resolves.toEqual(sala);
   });
 });
 
@@ -128,25 +112,6 @@ describe('empezarSala', () => {
   });
 });
 
-describe('verResumen', () => {
-  it('pide GET /salas/resumen y valida los tres números', async () => {
-    const resumen = { salasAbiertas: 2, partidasEnCurso: 1, jugadores: 5 };
-    responder(resumen);
-
-    await expect(verResumen()).resolves.toEqual(resumen);
-    expect(fetch).toHaveBeenCalledWith(
-      'http://localhost:3001/salas/resumen',
-      expect.objectContaining({ method: 'GET' }),
-    );
-  });
-
-  it('rechaza una respuesta con otra forma', async () => {
-    responder({ salasAbiertas: 'muchas' });
-
-    await expect(verResumen()).rejects.toMatchObject({ estado: 502 });
-  });
-});
-
 describe('salas públicas y opciones', () => {
   it('crearSala manda publica solo cuando es pública', async () => {
     responder(credencial, 201);
@@ -156,15 +121,6 @@ describe('salas públicas y opciones', () => {
       'http://localhost:3001/salas',
       expect.objectContaining({ body: JSON.stringify({ nombre: 'Ana', publica: true }) }),
     );
-  });
-
-  it('listarSalas valida cada fila', async () => {
-    const fila = { id: 'abcd1234', anfitrion: 'Ana', jugadores: 2, maximo: 10 };
-    responder([fila]);
-
-    await expect(listarSalas()).resolves.toEqual([fila]);
-    responder([{ id: 1 }]);
-    await expect(listarSalas()).rejects.toMatchObject({ estado: 502 });
   });
 
   it('cambiarSala hace PATCH con el token del anfitrión', async () => {
@@ -272,5 +228,26 @@ describe('salir, expulsar y ceder el anfitrión', () => {
   it('un rechazo del servidor llega como ErrorApi con su estado', async () => {
     responder({ message: 'Solo el anfitrión puede cambiar o empezar la partida' }, 403);
     await expect(expulsarDeSala('abcd1234', 'x', 'j2')).rejects.toMatchObject({ estado: 403 });
+  });
+});
+
+describe('pedirRevancha', () => {
+  it('hace POST a /revancha con el token y valida la credencial de la sala nueva', async () => {
+    const nueva = { salaId: 'nuevo5678', jugadorId: 'j1', token: 'otro' };
+    responder(nueva, 201);
+
+    await expect(pedirRevancha('abcd1234', 'secreto')).resolves.toEqual(nueva);
+    expect(fetch).toHaveBeenCalledWith(
+      'http://localhost:3001/salas/abcd1234/revancha',
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({ Authorization: 'Bearer secreto' }),
+      }),
+    );
+  });
+
+  it('propaga el rechazo (la partida aún no terminó)', async () => {
+    responder({ message: 'La partida aún no terminó' }, 409);
+    await expect(pedirRevancha('x', 't')).rejects.toMatchObject({ estado: 409 });
   });
 });

@@ -137,7 +137,7 @@ function ManoVisible({ recursos }: { recursos: NonNullable<JugadorVista['recurso
       className="m-0 mt-0.5 flex max-w-[4.5rem] min-w-0 flex-wrap justify-center gap-x-1 border-0 p-0"
     >
       {conCartas.length === 0 && (
-        <span className="text-[0.65rem] font-bold text-tinta/70">sin cartas</span>
+        <span className="text-xs font-bold text-tinta/70">sin cartas</span>
       )}
       {conCartas.map((r) => (
         <span
@@ -164,7 +164,7 @@ function EtiquetaDePresencia({ estado }: { estado: EstadoDePresencia }) {
   return (
     <span
       title={ayuda}
-      className={`mt-0.5 rounded-full px-1.5 text-[0.65rem] leading-4 font-extrabold ${estado === 'piloto' ? 'bg-azafran text-tinta' : 'bg-tinta/80 text-white'}`}
+      className={`mt-0.5 rounded-full px-1.5 text-xs leading-4 font-extrabold ${estado === 'piloto' ? 'bg-azafran text-tinta' : 'bg-tinta/80 text-white'}`}
     >
       {texto}
     </span>

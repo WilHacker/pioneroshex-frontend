@@ -68,7 +68,7 @@ function Grupo<T extends string | number | boolean>({
               disabled={!editable || o.deshabilitada}
               title={o.ayuda}
               onClick={() => onElegir(o.valor)}
-              className={`min-w-12 rounded-xl border-2 px-3 py-1.5 font-extrabold transition enabled:hover:-translate-y-0.5 disabled:cursor-default ${
+              className={`min-h-11 min-w-12 rounded-xl border-2 px-3 py-1.5 font-extrabold transition enabled:hover:-translate-y-0.5 disabled:cursor-default ${
                 elegida
                   ? 'border-azafran bg-azafran text-tinta shadow'
                   : 'border-tinta/15 bg-white/60 text-tinta/80 disabled:opacity-60'
