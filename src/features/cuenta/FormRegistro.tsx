@@ -7,7 +7,7 @@ import { PanelCuenta } from '@/components/PanelCuenta';
 import { registrar } from '@/lib/cuentas';
 import { ErrorApi } from '@/lib/http';
 import { CodigosDeRecuperacion } from './CodigosDeRecuperacion';
-import { AVISO, BOTON, CAMPO, ENLACE, ETIQUETA } from './estilos';
+import { AVISO, BOTON, CAMPO, ENLACE_EN_TEXTO, ETIQUETA } from './estilos';
 
 const CONTRASENA_MIN = 8;
 const ESTADO_REGISTRO_CERRADO = 403;
@@ -124,7 +124,7 @@ export function FormRegistro() {
       </form>
       <p className="text-sm">
         ¿Ya tienes cuenta?{' '}
-        <Link href="/entrar" className={ENLACE}>
+        <Link href="/entrar" className={ENLACE_EN_TEXTO}>
           Entrar
         </Link>
       </p>

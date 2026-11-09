@@ -13,6 +13,10 @@ export const BOTON_SECUNDARIO =
 export const BOTON_PELIGRO =
   'rounded-full bg-coral px-5 py-2 font-extrabold text-white transition enabled:hover:brightness-110 disabled:opacity-40';
 
-export const ENLACE = 'inline-flex min-h-8 items-center font-bold text-mar-laguna underline';
+/** Un enlace dentro de una frase: sin altura mínima, para no estirar el interlineado. */
+export const ENLACE_EN_TEXTO = 'font-bold text-mar-laguna underline';
+
+/** Un enlace suelto (en su propia fila): con altura mínima para tocarlo bien en el teléfono. */
+export const ENLACE = `inline-flex min-h-8 items-center ${ENLACE_EN_TEXTO}`;
 
 export const AVISO = 'rounded-xl bg-coral/15 px-3 py-2 text-sm font-bold text-coral';

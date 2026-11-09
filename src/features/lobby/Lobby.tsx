@@ -180,17 +180,11 @@ export function Lobby() {
           </label>
           <p className="-mt-2 text-sm text-tinta/70">
             ¿Quieres guardar tus partidas?{' '}
-            <Link
-              href="/entrar"
-              className="inline-flex min-h-8 items-center font-bold text-mar-laguna underline"
-            >
+            <Link href="/entrar" className="font-bold text-mar-laguna underline">
               Entrar
             </Link>{' '}
             o{' '}
-            <Link
-              href="/registro"
-              className="inline-flex min-h-8 items-center font-bold text-mar-laguna underline"
-            >
+            <Link href="/registro" className="font-bold text-mar-laguna underline">
               crear cuenta
             </Link>
             .
@@ -241,21 +235,24 @@ export function Lobby() {
         )}
 
         {pestana === 'codigo' && (
-          <form onSubmit={alUnirsePorCodigo} className="flex items-end gap-3">
-            <label className="flex flex-1 flex-col gap-1 text-sm font-extrabold">
+          <form
+            onSubmit={alUnirsePorCodigo}
+            className="flex flex-col gap-3 sm:flex-row sm:items-end"
+          >
+            <label className="flex min-w-0 flex-1 flex-col gap-1 text-sm font-extrabold">
               Código de la sala
               <input
                 value={codigo}
                 onChange={(e) => setCodigo(e.target.value)}
                 autoComplete="off"
                 spellCheck={false}
-                className="rounded-xl border-2 border-tinta/20 bg-white px-3 py-2 font-mono text-lg font-normal"
+                className="w-full min-w-0 rounded-xl border-2 border-tinta/20 bg-white px-3 py-2 font-mono text-lg font-normal"
               />
             </label>
             <button
               type="submit"
               disabled={ocupado || sinNombre || codigo.trim() === ''}
-              className={BOTON}
+              className={`${BOTON} sm:w-auto`}
             >
               Unirme
             </button>
