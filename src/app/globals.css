@@ -146,6 +146,10 @@ body {
   animation: entregar 1.9s ease-out 0.9s both;
 }
 
+.punto-sube {
+  animation: subir 2.4s ease-out both;
+}
+
 .sitio {
   animation: respirar 1.6s ease-in-out infinite;
 }
@@ -164,7 +168,8 @@ body {
   .sitio,
   .dado-rodando,
   .dado3d-cubo,
-  .suma-aparece {
+  .suma-aparece,
+  .punto-sube {
     animation: none;
   }
 

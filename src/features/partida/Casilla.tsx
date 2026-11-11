@@ -57,8 +57,12 @@ const ICONOS: Partial<Record<Terreno, { src: string; proporcion: number }>> = {
 
 /** El icono cabe en la mitad de arriba de la casilla, sobre la ficha del número. */
 const ICONO_ANCHO_MAX = 0.6;
-const ICONO_ALTO_MAX = 0.46;
-const ICONO_CENTRO_Y = -0.58;
+const ICONO_ALTO_MAX = 0.42;
+const ICONO_CENTRO_Y = -0.62;
+
+/** La ficha es grande a propósito: en mapas de muchos jugadores el tablero se ve pequeño. */
+const FICHA_RADIO = 0.36;
+const FICHA_TEXTO = 0.34;
 
 function Icono({ src, proporcion }: { src: string; proporcion: number }) {
   const alto = Math.min(ICONO_ALTO_MAX, ICONO_ANCHO_MAX / proporcion);
@@ -80,12 +84,14 @@ type Props = {
   terreno: Terreno;
   ficha: number | null;
   centro: Punto;
-  /** Acaba de salir su número: late para que se vea qué casillas producen. */
+  /** Acaba de salir su número: se marca para que se vea qué casillas tenían ese número. */
   resaltada?: boolean;
+  /** Cartas que salieron de esta casilla en la tirada; con 0 o sin valor, no produjo nada. */
+  entrega?: number;
 };
 
 /** Una casilla del tablero: el terreno con su relieve, sus dibujos y la ficha del número. */
-export function Casilla({ terreno, ficha, centro, resaltada = false }: Props) {
+export function Casilla({ terreno, ficha, centro, resaltada = false, entrega = 0 }: Props) {
   const color = COLOR_TERRENO[terreno];
   const esquinas = esquinasDeCasilla(centro);
   const interior = esquinasDeCasilla({ x: centro.x, y: centro.y }).map((e) => ({
@@ -120,7 +126,7 @@ export function Casilla({ terreno, ficha, centro, resaltada = false }: Props) {
         {terreno === 'DESIERTO' &&
           LUGARES.slice(2).map((lugar) => <Duna key={`${lugar.x},${lugar.y}`} {...lugar} />)}
       </g>
-      {resaltada && ficha !== null && (
+      {resaltada && ficha !== null && entrega > 0 && (
         <g className="sitio">
           <polygon
             points={puntos(esquinas)}
@@ -130,47 +136,88 @@ export function Casilla({ terreno, ficha, centro, resaltada = false }: Props) {
             strokeWidth="0.09"
             strokeLinejoin="round"
           >
-            <title>{`Produce con el ${ficha}`}</title>
+            <title>{`Produce con el ${ficha}: salen ${entrega} ${entrega === 1 ? 'carta' : 'cartas'}`}</title>
           </polygon>
           <circle
             cx={centro.x}
             cy={centro.y}
-            r="0.4"
+            r="0.46"
             fill="none"
             stroke="#fff"
             strokeWidth="0.06"
           />
         </g>
       )}
+      {/* Salió su número pero no sale nada (sin edificios, ladrón encima o banco corto): solo el contorno. */}
+      {resaltada && ficha !== null && entrega === 0 && (
+        <polygon
+          points={puntos(interior)}
+          fill="none"
+          stroke="#ffffff"
+          strokeWidth="0.06"
+          strokeDasharray="0.12 0.1"
+          strokeLinejoin="round"
+          opacity="0.9"
+        >
+          <title>{`Salió el ${ficha}, pero aquí nadie cobra`}</title>
+        </polygon>
+      )}
       {ficha !== null && (
         <g>
           <circle
             cx={centro.x}
             cy={centro.y}
-            r="0.3"
+            r={FICHA_RADIO}
             fill="#fbf3dc"
             stroke="#8a7a52"
-            strokeWidth="0.03"
+            strokeWidth="0.035"
           />
           <text
             x={centro.x}
-            y={centro.y + 0.07}
+            y={centro.y + 0.08}
             textAnchor="middle"
-            fontSize="0.27"
+            fontSize={FICHA_TEXTO}
             fontWeight="800"
             fill={roja ? '#c2261c' : '#1d2b2a'}
+            stroke="#fbf3dc"
+            strokeWidth="0.04"
+            paintOrder="stroke"
           >
             {ficha}
           </text>
           {Array.from({ length: probabilidad(ficha) }, (_, i) => (
             <circle
               key={i}
-              cx={centro.x + (i - (probabilidad(ficha) - 1) / 2) * 0.06}
-              cy={centro.y + 0.18}
-              r="0.02"
+              cx={centro.x + (i - (probabilidad(ficha) - 1) / 2) * 0.07}
+              cy={centro.y + 0.24}
+              r="0.025"
               fill={roja ? '#c2261c' : '#4a5654'}
             />
           ))}
+        </g>
+      )}
+      {resaltada && ficha !== null && entrega > 0 && (
+        <g aria-hidden="true">
+          <rect
+            x={centro.x - 0.28}
+            y={centro.y + 0.4}
+            width="0.56"
+            height="0.3"
+            rx="0.15"
+            fill="#ffe08a"
+            stroke="#8a6a12"
+            strokeWidth="0.03"
+          />
+          <text
+            x={centro.x}
+            y={centro.y + 0.62}
+            textAnchor="middle"
+            fontSize="0.23"
+            fontWeight="800"
+            fill="#4a3600"
+          >
+            {`+${entrega}`}
+          </text>
         </g>
       )}
     </g>

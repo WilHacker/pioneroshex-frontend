@@ -1,4 +1,12 @@
-import { memo, useMemo, type KeyboardEvent, type ReactNode } from 'react';
+import {
+  memo,
+  useEffect,
+  useMemo,
+  useRef,
+  type KeyboardEvent,
+  type PointerEvent as ReactPointerEvent,
+  type ReactNode,
+} from 'react';
 import { ControlesDeZoom } from '@/components/ControlesDeZoom';
 import { useZoom } from '@/components/useZoom';
 import type { Hex, Mesa, Punto, Vista } from '@/lib/esquemas';
@@ -28,6 +36,68 @@ import {
 /** Qué se puede tocar ahora en el tablero. */
 export type Objetivo = 'POBLADOS' | 'CIUDADES' | 'ARISTAS' | 'CASILLAS' | null;
 
+/** Un sitio donde se puede construir con el atajo del doble clic: qué pieza y en qué vértice o arista. */
+export interface SitioRapido {
+  readonly tipo: 'POBLADO' | 'CIUDAD' | 'CAMINO';
+  readonly id: string;
+}
+
+type FantasmaProps = {
+  sitio: SitioRapido;
+  mesa: Mesa;
+  posiciones: ReadonlyMap<string, Punto>;
+  color: string;
+  alConfirmar?: (() => void) | undefined;
+};
+
+const ETIQUETA_DE_CONFIRMAR = {
+  POBLADO: 'Confirmar poblado',
+  CIUDAD: 'Confirmar mejora a ciudad',
+  CAMINO: 'Confirmar camino',
+} as const;
+
+/**
+ * Tras el doble clic, la pieza en fantasma con la marca de confirmar (el aro verde con el visto):
+ * un clic en la marca construye. Los primeros instantes no responden, para que un tercer clic
+ * seguido, sin querer, no construya.
+ */
+function Fantasma({ sitio, mesa, posiciones, color, alConfirmar }: FantasmaProps) {
+  const aparecio = useRef<number | null>(null);
+  useEffect(() => {
+    aparecio.current = Date.now();
+  }, []);
+  const confirmar = (): void => {
+    if (aparecio.current === null || Date.now() - aparecio.current < ENFRIAMIENTO_MS) return;
+    alConfirmar?.();
+  };
+  const etiqueta = ETIQUETA_DE_CONFIRMAR[sitio.tipo];
+
+  if (sitio.tipo === 'CAMINO') {
+    const arista = mesa.aristas.find((a) => a.id === sitio.id);
+    const desde = arista && posiciones.get(arista.vertices[0]);
+    const hasta = arista && posiciones.get(arista.vertices[1]);
+    if (!desde || !hasta) return null;
+    const medio = { x: (desde.x + hasta.x) / 2, y: (desde.y + hasta.y) / 2 };
+    return (
+      <Tocable etiqueta={etiqueta} alActivar={confirmar} presionado>
+        <Camino desde={desde} hasta={hasta} color={color} fantasma />
+        <Confirmar posicion={medio} />
+        <circle cx={medio.x} cy={medio.y} r={RADIO_DE_TOQUE} fill="transparent" />
+      </Tocable>
+    );
+  }
+  const posicion = posiciones.get(sitio.id);
+  if (!posicion) return null;
+  const Pieza = sitio.tipo === 'CIUDAD' ? Ciudad : Poblado;
+  return (
+    <Tocable etiqueta={etiqueta} alActivar={confirmar} presionado>
+      <Pieza posicion={posicion} color={color} fantasma />
+      <Confirmar posicion={posicion} />
+      <circle cx={posicion.x} cy={posicion.y} r={RADIO_DE_TOQUE} fill="transparent" />
+    </Tocable>
+  );
+}
+
 type Props = {
   mesa: Mesa;
   /** Solo lo que el tablero dibuja: así también sirve para el tablero decorativo de la portada. */
@@ -44,9 +114,22 @@ type Props = {
   aristasElegidas?: readonly string[];
   /** El número que acaba de salir: sus casillas laten. */
   numeroResaltado?: number | null;
+  /** Cartas que salieron de cada casilla (`q,r`) en la última tirada; las demás del número no cobran. */
+  entregas?: ReadonlyMap<string, number>;
   onVertice: (id: string) => void;
   onArista: (id: string) => void;
   onCasilla: (hex: Hex) => void;
+  /**
+   * Doble clic (o doble toque) en un vértice libre, en tu poblado o en una arista libre, sin haber
+   * elegido herramienta: pide construir ahí. Sin esta función no hay zonas de doble clic.
+   */
+  onDoble?: (sitio: SitioRapido) => void;
+  /** Se apunta a un sitio (ratón encima o un toque), o `null` al dejar de apuntarlo. */
+  onApuntar?: (sitio: SitioRapido | null, porClic?: boolean) => void;
+  /** Se pulsó la marca de confirmar del fantasma: construir. */
+  onConfirmarFantasma?: () => void;
+  /** Una pieza en fantasma, para mostrar dónde se construiría mientras se confirma. */
+  fantasma?: SitioRapido | null;
   /** Dibujo extra encima de todo (p. ej. los recursos que reparte una tirada). */
   capa?: ReactNode;
   /** Zoom con rueda, arrastre, pellizco y botones. Apagado en el tablero decorativo de la portada. */
@@ -55,6 +138,31 @@ type Props = {
 
 const SIN_ARISTAS: readonly string[] = [];
 const RADIO_DE_TOQUE = 0.32;
+/** Zonas invisibles del doble clic: el círculo de un vértice y el grosor de una arista. */
+const RADIO_DOBLE_CLIC = 0.26;
+const GROSOR_DOBLE_CLIC = 0.3;
+const DOBLE_TOQUE_MS = 400;
+/** Lo que tarda la marca de confirmar en responder: el mismo plazo del doble toque. */
+const ENFRIAMIENTO_MS = DOBLE_TOQUE_MS;
+
+/**
+ * Detecta dos clics seguidos sobre el mismo sitio. Se cuentan los clics y no el evento `dblclick`
+ * porque en el móvil este no siempre llega; un arrastre nunca llega aquí (`useZoom` descarta el clic
+ * con que termina).
+ */
+function useDobleToque(): (sitio: string, alDoble: () => void) => void {
+  const ultimo = useRef<{ sitio: string; en: number } | null>(null);
+  return (sitio, alDoble) => {
+    const ahora = Date.now();
+    const previo = ultimo.current;
+    if (previo && previo.sitio === sitio && ahora - previo.en <= DOBLE_TOQUE_MS) {
+      ultimo.current = null;
+      alDoble();
+      return;
+    }
+    ultimo.current = { sitio, en: ahora };
+  };
+}
 
 /** El mar poco profundo y la arena que rodean la isla (anchos en unidades del tablero). */
 const COLOR_MAR_BAJO = '#2f93a6';
@@ -151,11 +259,30 @@ const ContenidoDelTablero = memo(function ContenidoDelTablero({
   previa,
   aristasElegidas = SIN_ARISTAS,
   numeroResaltado = null,
+  entregas,
   onVertice,
   onArista,
   onCasilla,
+  onDoble,
+  onApuntar,
+  onConfirmarFantasma,
+  fantasma = null,
   capa = null,
 }: ContenidoProps) {
+  const alToque = useDobleToque();
+  /** Apuntar: el ratón al entrar o un toque; dos toques seguidos piden construir. */
+  const manejadores = (sitio: SitioRapido) => ({
+    onClick: () => {
+      onApuntar?.(sitio, true);
+      alToque(`${sitio.tipo}:${sitio.id}`, () => onDoble?.(sitio));
+    },
+    onPointerEnter: (e: ReactPointerEvent) => {
+      if (e.pointerType === 'mouse') onApuntar?.(sitio);
+    },
+    onPointerLeave: (e: ReactPointerEvent) => {
+      if (e.pointerType === 'mouse') onApuntar?.(null);
+    },
+  });
   const posiciones = posicionesDeVertices(mesa);
   const miColor = colorDeJugador(vista.yo ? indiceDe(vista.yo) : 0);
   const legales = new Set(sitios);
@@ -199,6 +326,7 @@ const ContenidoDelTablero = memo(function ContenidoDelTablero({
           ficha={c.ficha}
           centro={c.centro}
           resaltada={numeroResaltado !== null && c.ficha === numeroResaltado}
+          entrega={entregas?.get(claveHex(c.hex)) ?? 0}
         />
       ))}
 
@@ -350,6 +478,62 @@ const ContenidoDelTablero = memo(function ContenidoDelTablero({
           </Tocable>
         );
       })}
+
+      {/* Sin herramienta elegida: apuntar a un sitio libre muestra lo que cuesta y doble clic pide confirmar. Los vértices van encima de las aristas. */}
+      {objetivo === null && onDoble && (
+        <g data-zonas="aristas">
+          {mesa.aristas.map((a) => {
+            const desde = posiciones.get(a.vertices[0]);
+            const hasta = posiciones.get(a.vertices[1]);
+            if (!desde || !hasta || vista.caminos[a.id] !== undefined) return null;
+            return (
+              // Es un atajo del ratón y del dedo: con teclado se construye con la paleta.
+              <line
+                key={a.id}
+                data-doble-arista={a.id}
+                x1={desde.x}
+                y1={desde.y}
+                x2={hasta.x}
+                y2={hasta.y}
+                strokeWidth={GROSOR_DOBLE_CLIC}
+                strokeLinecap="round"
+                className="cursor-pointer stroke-transparent hover:stroke-white/30"
+                {...manejadores({ tipo: 'CAMINO', id: a.id })}
+              />
+            );
+          })}
+        </g>
+      )}
+      {objetivo === null && onDoble && (
+        <g data-zonas="vertices">
+          {mesa.vertices.map((v) => {
+            const edificio = vista.edificios[v.id];
+            const mejora = edificio?.dueno === vista.yo && edificio?.tipo === 'POBLADO';
+            if (edificio && !mejora) return null;
+            return (
+              <circle
+                key={v.id}
+                data-doble-vertice={v.id}
+                cx={v.posicion.x}
+                cy={v.posicion.y}
+                r={RADIO_DOBLE_CLIC}
+                className="cursor-pointer fill-transparent hover:fill-white/30"
+                {...manejadores({ tipo: mejora ? 'CIUDAD' : 'POBLADO', id: v.id })}
+              />
+            );
+          })}
+        </g>
+      )}
+      {fantasma && (
+        <Fantasma
+          key={`${fantasma.tipo}:${fantasma.id}`}
+          sitio={fantasma}
+          mesa={mesa}
+          posiciones={posiciones}
+          color={miColor}
+          alConfirmar={onConfirmarFantasma}
+        />
+      )}
 
       {objetivo === 'CASILLAS' &&
         mesa.casillas

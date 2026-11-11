@@ -29,6 +29,22 @@ describe('Jugadores: cada jugador es una fila de cartas y contadores', () => {
     expect(within(beto).getByTitle('Puntos de victoria')).toHaveTextContent('2');
   });
 
+  it('un nombre largo no se corta con «…»: baja a otra línea y el «(tú)» va aparte', () => {
+    const { container } = render(
+      <Jugadores
+        vista={vistaDePrueba()}
+        nombreDe={(id) => (id === 'j1' ? 'Willian Alejandro' : nombreDe(id))}
+        indiceDe={indiceDe}
+      />,
+    );
+    const mia = fila(container, 'j1');
+    const nombre = within(mia).getByTitle('Willian Alejandro');
+    expect(nombre).toHaveTextContent('Willian Alejandro');
+    expect(nombre).toHaveClass('line-clamp-2');
+    expect(nombre).not.toHaveClass('truncate');
+    expect(within(mia).getByText('(tú)')).toBeInTheDocument();
+  });
+
   it('la carta de la mano y la de desarrollo se dibujan con las cartas SVG de reverso', () => {
     const { container } = ver();
     const beto = fila(container, 'j2');

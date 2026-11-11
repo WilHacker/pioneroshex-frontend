@@ -21,8 +21,20 @@ type Props = {
 type Escala = 'normal' | 'grande';
 
 const MEDIDAS = {
-  normal: { avatar: 'size-11 text-xl', carta: [30, 42], icono: 30, nombre: 'text-sm' },
-  grande: { avatar: 'size-16 text-3xl', carta: [38, 53], icono: 38, nombre: 'text-lg' },
+  normal: {
+    avatar: 'size-11 text-xl',
+    carta: [30, 42],
+    icono: 30,
+    nombre: 'text-sm',
+    columna: 'w-[5rem]',
+  },
+  grande: {
+    avatar: 'size-16 text-3xl',
+    carta: [38, 53],
+    icono: 38,
+    nombre: 'text-lg',
+    columna: 'w-[7rem]',
+  },
 } as const;
 
 /** Número encima de otro elemento, en la esquina de arriba a la derecha. */
@@ -197,7 +209,7 @@ function Fila({
   soyYo = false,
   presencia = null,
 }: FilaProps) {
-  const { nombre: tamanoNombre } = MEDIDAS[escala];
+  const { nombre: tamanoNombre, columna } = MEDIDAS[escala];
   const Raiz = soyYo ? 'article' : 'li';
   return (
     <Raiz
@@ -209,12 +221,16 @@ function Fila({
       className={`relative flex items-center gap-2 rounded-xl border-[3px] border-[#101c28] px-2 py-2 text-tinta shadow-md ${enTurno ? 'bg-[#fff1c9] ring-2 ring-azafran' : 'bg-[#c3c7cb] opacity-90'}`}
     >
       {enTurno && <EtiquetaTurno />}
-      <div className="flex w-[4.5rem] shrink-0 flex-col items-center">
-        <p className={`max-w-full truncate leading-tight font-extrabold ${tamanoNombre}`}>
+      <div className={`flex ${columna} shrink-0 flex-col items-center`}>
+        {/* El nombre baja a una segunda línea en vez de cortarse con «…»; el «(tú)» va aparte. */}
+        <p
+          title={nombre}
+          className={`line-clamp-2 max-w-full text-center leading-tight font-extrabold [overflow-wrap:anywhere] ${tamanoNombre}`}
+        >
           {nombre}
-          {soyYo && <span className="font-medium text-tinta-suave"> (tú)</span>}
           {enTurno && <span className="sr-only"> · en turno</span>}
         </p>
+        {soyYo && <span className="text-xs leading-tight font-medium text-tinta-suave">(tú)</span>}
         <Avatar nombre={nombre} color={color} escala={escala} enTurno={enTurno} />
         <Cinta valor={jugador.puntos} />
         {presencia && <EtiquetaDePresencia estado={presencia} />}

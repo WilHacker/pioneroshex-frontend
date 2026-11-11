@@ -9,6 +9,8 @@ describe('textoDeMotivo', () => {
     expect(textoDeMotivo('NO_ES_TU_TURNO')).toBe('No es tu turno');
     expect(textoDeMotivo('DEMASIADAS_OFERTAS')).toMatch(/ofertas/i);
     expect(textoDeMotivo('NO_PUEDES_COMERCIAR')).toMatch(/banco/i);
+    expect(textoDeMotivo('CAMBIO_INCORRECTO')).toMatch(/cambio con la banca no cuadra/i);
+    expect(textoDeMotivo('YA_ACEPTADO')).toMatch(/ya aceptaste/i);
     expect(textoDeMotivo('MOTIVO_NUEVO')).toBe('No se pudo hacer esa jugada (MOTIVO_NUEVO)');
   });
 });
@@ -46,6 +48,10 @@ describe('describirEvento', () => {
       'Ana cambió 4 de madera por 1 de mineral',
     ],
     [{ tipo: 'TRATO_PROPUESTO', trato: { proponente: 'j2' } }, 'Beto propuso un trato'],
+    [
+      { tipo: 'TRATO_PREACEPTADO', jugador: 'j1', proponente: 'j2' },
+      'Ana aceptó la oferta de Beto',
+    ],
     [{ tipo: 'TRATO_ACEPTADO', aceptante: 'j1', proponente: 'j2' }, 'Ana aceptó el trato de Beto'],
     [{ tipo: 'TRATO_RECHAZADO', jugador: 'j1' }, 'Ana rechazó un trato'],
     [{ tipo: 'TRATO_CANCELADO' }, 'Se canceló un trato'],
@@ -60,8 +66,23 @@ describe('describirEvento', () => {
       { tipo: 'MONOPOLIO_JUGADO', jugador: 'j1', recurso: 'OVEJA', cantidadRobada: 5 },
       'Ana jugó monopolio de oveja y robó 5',
     ],
-    [{ tipo: 'GRAN_EJERCITO_CAMBIADO', nuevoTitular: 'j2' }, 'Beto tiene el gran ejército'],
-    [{ tipo: 'GRAN_RUTA_CAMBIADA', nuevoTitular: 'j1', longitud: 6 }, 'Ana tiene la gran ruta (6)'],
+    [{ tipo: 'GRAN_EJERCITO_CAMBIADO', nuevoTitular: 'j2' }, 'Beto consiguió el gran ejército'],
+    [
+      { tipo: 'GRAN_EJERCITO_CAMBIADO', titularAnterior: 'j1', nuevoTitular: 'j2' },
+      'Beto le quitó el gran ejército a Ana',
+    ],
+    [
+      { tipo: 'GRAN_RUTA_CAMBIADA', nuevoTitular: 'j1', longitud: 6 },
+      'Ana consiguió la gran ruta (6 caminos)',
+    ],
+    [
+      { tipo: 'GRAN_RUTA_CAMBIADA', titularAnterior: 'j1', nuevoTitular: 'j2', longitud: 7 },
+      'Beto le quitó la gran ruta a Ana (7 caminos)',
+    ],
+    [
+      { tipo: 'GRAN_RUTA_CAMBIADA', titularAnterior: 'j1', nuevoTitular: null },
+      'Ana perdió la gran ruta: ahora nadie la tiene',
+    ],
     [{ tipo: 'GRAN_RUTA_CAMBIADA', nuevoTitular: null }, 'Nadie tiene ya la gran ruta'],
     [{ tipo: 'FASE_ESPECIAL_INICIADA' }, 'Empieza la construcción especial'],
     [

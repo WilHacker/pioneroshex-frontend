@@ -23,6 +23,8 @@ const MOTIVOS: Record<string, string> = {
   SIN_VICTIMA_POSIBLE: 'No hay a quién robar en esa casilla',
   BANCO_AGOTADO: 'El banco no tiene suficiente de ese recurso',
   MISMO_RECURSO: 'Elige recursos distintos',
+  CAMBIO_INCORRECTO:
+    'El cambio con la banca no cuadra: da cartas completas de cada razón y pide una carta por cada cambio',
   VERTICE_OCUPADO: 'Ya hay un edificio ahí',
   ARISTA_OCUPADA: 'Ya hay un camino ahí',
   DEMASIADO_CERCA: 'Está demasiado cerca de otro poblado (regla de distancia)',
@@ -39,6 +41,7 @@ const MOTIVOS: Record<string, string> = {
   INTERCAMBIO_SOLAPADO: 'No puedes pedir y ofrecer el mismo recurso',
   TRATO_NO_DIRIGIDO_A_TI: 'Ese trato no es para ti',
   YA_RECHAZADO: 'Ya rechazaste ese trato',
+  YA_ACEPTADO: 'Ya aceptaste ese trato: espera a que el proponente lo cierre',
   NO_PUEDES_COMERCIAR: 'En esta partida solo se puede comerciar con el banco',
   DEMASIADAS_OFERTAS: 'Ya hiciste todas las ofertas que se permiten en este turno',
   MAZO_AGOTADO: 'No quedan cartas de desarrollo',
@@ -80,6 +83,34 @@ const CARTAS: Record<string, string> = {
   MONOPOLIO: 'monopolio',
 };
 
+const caminos = (n: number): string => `${n} ${n === 1 ? 'camino' : 'caminos'}`;
+
+/**
+ * Aviso para todos cuando cambia de manos la gran ruta o el gran ejército: quién la consigue y a
+ * quién se la quitan. `null` si el evento no es uno de esos logros.
+ */
+export function describirLogro(e: EventoJuego, nombre: (id: string) => string): string | null {
+  const nuevo = texto(e.nuevoTitular);
+  const anterior = texto(e.titularAnterior);
+  switch (e.tipo) {
+    case 'GRAN_RUTA_CAMBIADA':
+      if (nuevo === '') {
+        return anterior === ''
+          ? 'Nadie tiene ya la gran ruta'
+          : `${nombre(anterior)} perdió la gran ruta: ahora nadie la tiene`;
+      }
+      return anterior === ''
+        ? `${nombre(nuevo)} consiguió la gran ruta (${caminos(numero(e.longitud))})`
+        : `${nombre(nuevo)} le quitó la gran ruta a ${nombre(anterior)} (${caminos(numero(e.longitud))})`;
+    case 'GRAN_EJERCITO_CAMBIADO':
+      return anterior === ''
+        ? `${nombre(nuevo)} consiguió el gran ejército`
+        : `${nombre(nuevo)} le quitó el gran ejército a ${nombre(anterior)}`;
+    default:
+      return null;
+  }
+}
+
 /** Una frase para el registro de la partida, o `null` si el evento no merece una línea. */
 export function describirEvento(e: EventoJuego, nombre: (id: string) => string): string | null {
   const quien = nombre(texto(e.jugador));
@@ -111,6 +142,8 @@ export function describirEvento(e: EventoJuego, nombre: (id: string) => string):
       return `${quien} cambió ${numero(e.cantidadEntregada)} de ${recurso(e.entrega)} por 1 de ${recurso(e.recibe)}`;
     case 'TRATO_PROPUESTO':
       return `${nombre(texto((e.trato as { proponente?: unknown } | undefined)?.proponente))} propuso un trato`;
+    case 'TRATO_PREACEPTADO':
+      return `${quien} aceptó la oferta de ${nombre(texto(e.proponente))}`;
     case 'TRATO_ACEPTADO':
       return `${nombre(texto(e.aceptante))} aceptó el trato de ${nombre(texto(e.proponente))}`;
     case 'TRATO_RECHAZADO':
@@ -128,11 +161,8 @@ export function describirEvento(e: EventoJuego, nombre: (id: string) => string):
     case 'MONOPOLIO_JUGADO':
       return `${quien} jugó monopolio de ${recurso(e.recurso)} y robó ${numero(e.cantidadRobada)}`;
     case 'GRAN_EJERCITO_CAMBIADO':
-      return `${nombre(texto(e.nuevoTitular))} tiene el gran ejército`;
     case 'GRAN_RUTA_CAMBIADA':
-      return e.nuevoTitular
-        ? `${nombre(texto(e.nuevoTitular))} tiene la gran ruta (${numero(e.longitud)})`
-        : 'Nadie tiene ya la gran ruta';
+      return describirLogro(e, nombre);
     case 'FASE_ESPECIAL_INICIADA':
       return 'Empieza la construcción especial';
     case 'CONSTRUCCION_ESPECIAL_PASADA':

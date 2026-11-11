@@ -1,5 +1,37 @@
 import { describe, expect, it } from 'vitest';
-import { entregasDe } from './entregas';
+import { cartasPorCasilla, entregasDe } from './entregas';
+
+describe('cartasPorCasilla', () => {
+  const reparto = (cantidad: number, fuentes: unknown) => ({
+    tipo: 'RECURSOS_REPARTIDOS',
+    jugador: 'j1',
+    recurso: 'OVEJA',
+    cantidad,
+    causa: { tipo: 'PRODUCCION', tirada: 5, fuentes },
+  });
+
+  it('suma lo que salió de cada casilla, aunque cobren varios jugadores', () => {
+    const mapa = cartasPorCasilla([
+      reparto(3, [
+        { casilla: '0,0', cantidad: 1 },
+        { casilla: '0,0', cantidad: 2 },
+      ]),
+      { ...reparto(1, [{ casilla: '0,0', cantidad: 1 }]), jugador: 'j2' },
+      reparto(2, [{ casilla: '1,-1', cantidad: 2 }]),
+    ]);
+    expect(Object.fromEntries(mapa)).toEqual({ '0,0': 4, '1,-1': 2 });
+  });
+
+  it('ignora lo que no es un reparto o viene mal formado, sin romper', () => {
+    const mapa = cartasPorCasilla([
+      { tipo: 'DADOS_TIRADOS', dados: [2, 3] },
+      { tipo: 'RECURSOS_REPARTIDOS', jugador: 'j1', recurso: 'OVEJA', cantidad: 1 },
+      reparto(1, 'no-es-una-lista'),
+      reparto(1, [null, { casilla: 5, cantidad: 1 }, { casilla: '2,2', cantidad: 0 }]),
+    ]);
+    expect(mapa.size).toBe(0);
+  });
+});
 
 describe('entregasDe', () => {
   it('lee a quién reparte el banco, qué recurso y cuántas cartas', () => {

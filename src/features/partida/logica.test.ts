@@ -1,17 +1,63 @@
-import { SIN_SITIOS, vistaDePrueba } from '@/lib/pruebas';
+import { SIN_SITIOS, V1, vistaDePrueba } from '@/lib/pruebas';
 import {
   accionDeArista,
   accionDeLadron,
+  accionDeSitioRapido,
   accionDeVertice,
   disponible,
   esMiTurno,
   mensajeDeFase,
   modoEfectivo,
   objetivoDe,
+  puedeConstruirAlDobleClic,
   sitiosDe,
+  TEXTO_DE_SITIO,
 } from './logica';
 
 const nombre = (id: string): string => ({ j1: 'Ana', j2: 'Beto' })[id] ?? id;
+
+describe('doble clic para construir en el mapa', () => {
+  it('solo vale en mi turno, en la fase principal y sin otra herramienta elegida', () => {
+    expect(puedeConstruirAlDobleClic(vistaDePrueba(), null)).toBe(true);
+    expect(puedeConstruirAlDobleClic(vistaDePrueba(), 'POBLADO')).toBe(false);
+    expect(puedeConstruirAlDobleClic(vistaDePrueba({ turnoDe: 'j2' }), null)).toBe(false);
+    expect(puedeConstruirAlDobleClic(vistaDePrueba({ fase: 'PRE_TIRADA' }), null)).toBe(false);
+    expect(puedeConstruirAlDobleClic(vistaDePrueba({ fase: 'PREPARACION_POBLADO' }), null)).toBe(
+      false,
+    );
+    expect(puedeConstruirAlDobleClic(vistaDePrueba({ fase: 'MOVER_LADRON' }), null)).toBe(false);
+  });
+
+  it('también en la construcción especial, cuando me toca', () => {
+    const vista = vistaDePrueba({
+      fase: 'CONSTRUCCION_ESPECIAL',
+      turnoDe: 'j2',
+      turnoEspecialDe: 'j1',
+    });
+    expect(puedeConstruirAlDobleClic(vista, null)).toBe(true);
+  });
+
+  it('cada sitio se traduce en la jugada que se envía al confirmar', () => {
+    expect(accionDeSitioRapido({ tipo: 'POBLADO', id: V1 })).toEqual({
+      tipo: 'CONSTRUIR_POBLADO',
+      vertice: V1,
+    });
+    expect(accionDeSitioRapido({ tipo: 'CIUDAD', id: V1 })).toEqual({
+      tipo: 'CONSTRUIR_CIUDAD',
+      vertice: V1,
+    });
+    expect(accionDeSitioRapido({ tipo: 'CAMINO', id: 'a1' })).toEqual({
+      tipo: 'CONSTRUIR_CAMINO',
+      arista: 'a1',
+    });
+  });
+
+  it('cada pieza tiene su título para el cartel y su nombre para los avisos', () => {
+    expect(TEXTO_DE_SITIO.POBLADO).toEqual({ titulo: 'Poner un poblado', pieza: 'un poblado' });
+    expect(TEXTO_DE_SITIO.CIUDAD).toEqual({ titulo: 'Mejorar a ciudad', pieza: 'una ciudad' });
+    expect(TEXTO_DE_SITIO.CAMINO).toEqual({ titulo: 'Poner un camino', pieza: 'un camino' });
+  });
+});
 
 describe('esMiTurno', () => {
   it('en el turno normal, cuando turnoDe soy yo', () => {

@@ -45,6 +45,9 @@ export function TiraDeJugadores({ vista, nombreDe, indiceDe, presencia = null }:
             >
               {nombreDe(j.id).charAt(0).toUpperCase()}
             </span>
+            <span aria-hidden="true" className="max-w-[6.5rem] truncate text-sm font-bold">
+              {nombreDe(j.id)}
+            </span>
             <span className="sr-only">
               {nombreDe(j.id)}
               {soyYo ? ' (tú)' : ''}

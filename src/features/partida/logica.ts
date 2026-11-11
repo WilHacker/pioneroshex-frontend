@@ -1,5 +1,5 @@
 import type { AccionDisponible, Hex, Sitios, Vista } from '@/lib/esquemas';
-import type { Objetivo } from './Tablero';
+import type { Objetivo, SitioRapido } from './Tablero';
 
 /** Lo que el jugador está haciendo con el tablero: qué pasará al tocar un vértice, arista o casilla. */
 export type Modo = 'POBLADO' | 'CIUDAD' | 'CAMINO' | 'CARRETERAS' | 'LADRON' | 'CABALLERO';
@@ -68,6 +68,40 @@ export function accionDeVertice(vista: Vista, modo: Modo | null, vertice: string
     return { tipo, vertice };
   }
   return modo === 'CIUDAD' ? { tipo: 'CONSTRUIR_CIUDAD', vertice } : null;
+}
+
+/**
+ * El doble clic para construir directo en el mapa solo vale en tu turno, en la fase principal (o en
+ * la construcción especial) y sin haber elegido otra herramienta: con una elegida, tocar dos veces
+ * el mismo sitio ya confirma. En la preparación y al mover el ladrón manda la fase.
+ */
+export function puedeConstruirAlDobleClic(vista: Vista, modo: Modo | null): boolean {
+  return (
+    modo === null &&
+    esMiTurno(vista) &&
+    (vista.fase === 'FASE_PRINCIPAL' || vista.fase === 'CONSTRUCCION_ESPECIAL')
+  );
+}
+
+/** Cómo se llama cada construcción rápida en los carteles: el título y la pieza en un aviso. */
+export const TEXTO_DE_SITIO: Readonly<
+  Record<SitioRapido['tipo'], { titulo: string; pieza: string }>
+> = {
+  POBLADO: { titulo: 'Poner un poblado', pieza: 'un poblado' },
+  CIUDAD: { titulo: 'Mejorar a ciudad', pieza: 'una ciudad' },
+  CAMINO: { titulo: 'Poner un camino', pieza: 'un camino' },
+};
+
+/** La jugada que se envía al confirmar una construcción rápida. */
+export function accionDeSitioRapido(sitio: SitioRapido): object {
+  switch (sitio.tipo) {
+    case 'POBLADO':
+      return { tipo: 'CONSTRUIR_POBLADO', vertice: sitio.id };
+    case 'CIUDAD':
+      return { tipo: 'CONSTRUIR_CIUDAD', vertice: sitio.id };
+    case 'CAMINO':
+      return { tipo: 'CONSTRUIR_CAMINO', arista: sitio.id };
+  }
 }
 
 export function accionDeArista(vista: Vista, modo: Modo | null, arista: string): object | null {

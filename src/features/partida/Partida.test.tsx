@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { AccionDisponible, Sitios, Vista } from '@/lib/esquemas';
 import { SIN_SITIOS, V1, V2, mesaDePrueba, vistaDePrueba } from '@/lib/pruebas';
@@ -40,6 +40,7 @@ function juego({ vista, acciones, sitios, ...resto }: Opciones = {}): Juego {
     ultimos: { numero: 0, eventos: [] },
     tiradas: 0,
     resaltado: null,
+    entregadas: new Map(),
     vence: null,
     presencia: null,
     enviar,
@@ -139,6 +140,192 @@ describe('Partida: mi turno', () => {
   });
 });
 
+describe('Partida: doble clic para construir en el mapa', () => {
+  // Con el reloj congelado los dos clics de `dblClick` siempre caen dentro del plazo del doble toque,
+  // por muy cargada que esté la máquina que corre los tests.
+  beforeEach(() => vi.useFakeTimers({ toFake: ['Date'] }));
+  afterEach(() => vi.useRealTimers());
+
+  const zona = (atributo: string, id: string): Element =>
+    document.querySelector(`[${atributo}="${id}"]`)!;
+  const dobleClic = async (atributo: string, id: string): Promise<void> => {
+    await userEvent.dblClick(zona(atributo, id));
+  };
+  const PAGA_POBLADO = { MADERA: 1, LADRILLO: 1, OVEJA: 1, TRIGO: 1 };
+  const marca = (nombre: string): HTMLElement => screen.getByRole('button', { name: nombre });
+  const hayMarca = (): boolean => screen.queryByRole('button', { name: /^Confirmar/ }) !== null;
+  /** Pasa el instante en que la marca no responde (evita confirmar con un tercer clic seguido) y la pulsa. */
+  const pulsarMarca = async (nombre: string): Promise<void> => {
+    vi.setSystemTime(Date.now() + 1000);
+    await userEvent.click(marca(nombre));
+  };
+
+  it('apuntar con el ratón muestra lo que cuesta y lo que te falta, y al salir se va', async () => {
+    mostrar(juego({ vista: conMano({ MADERA: 1, TRIGO: 1 }) }));
+    await userEvent.hover(zona('data-doble-vertice', V1));
+    expect(screen.getByText('Poner un poblado')).toBeInTheDocument();
+    expect(screen.getByText('Te falta 1 de ladrillo y 1 de oveja')).toBeInTheDocument();
+    await userEvent.unhover(zona('data-doble-vertice', V1));
+    expect(screen.queryByText('Poner un poblado')).not.toBeInTheDocument();
+  });
+
+  it('un solo clic enseña el costo (así se ve con el dedo) pero no deja ninguna marca ni envía', async () => {
+    mostrar(juego({ vista: conMano(PAGA_POBLADO) }));
+    await userEvent.click(zona('data-doble-vertice', V1));
+    expect(screen.getByText('Tienes todo lo necesario')).toBeInTheDocument();
+    expect(hayMarca()).toBe(false);
+    expect(enviar).not.toHaveBeenCalled();
+  });
+
+  it('doble clic deja la pieza en fantasma con el aro verde de confirmar, y todavía no envía nada', async () => {
+    mostrar(juego({ vista: conMano(PAGA_POBLADO) }));
+    await dobleClic('data-doble-vertice', V1);
+    expect(marca('Confirmar poblado')).toBeInTheDocument();
+    expect(screen.getByText('Tienes todo lo necesario')).toBeInTheDocument();
+    expect(enviar).not.toHaveBeenCalled();
+  });
+
+  it('un clic en el aro envía el poblado y la marca desaparece', async () => {
+    mostrar(juego({ vista: conMano(PAGA_POBLADO) }));
+    await dobleClic('data-doble-vertice', V1);
+    await pulsarMarca('Confirmar poblado');
+    expect(enviar).toHaveBeenCalledExactlyOnceWith({ tipo: 'CONSTRUIR_POBLADO', vertice: V1 });
+    await waitFor(() => expect(hayMarca()).toBe(false));
+  });
+
+  it('un tercer clic seguido, sin querer, no construye', async () => {
+    mostrar(juego({ vista: conMano(PAGA_POBLADO) }));
+    await dobleClic('data-doble-vertice', V1);
+    await userEvent.click(marca('Confirmar poblado'));
+    expect(enviar).not.toHaveBeenCalled();
+  });
+
+  it('en mi poblado deja la mejora en fantasma y el aro envía la ciudad', async () => {
+    mostrar(
+      juego({
+        vista: conMano(
+          { TRIGO: 2, MINERAL: 3 },
+          { edificios: { [V1]: { dueno: 'j1', tipo: 'POBLADO' } } },
+        ),
+      }),
+    );
+    await dobleClic('data-doble-vertice', V1);
+    await pulsarMarca('Confirmar mejora a ciudad');
+    expect(enviar).toHaveBeenCalledExactlyOnceWith({ tipo: 'CONSTRUIR_CIUDAD', vertice: V1 });
+  });
+
+  it('en una arista libre deja el camino en fantasma y el aro lo envía', async () => {
+    mostrar(juego({ vista: conMano({ MADERA: 1, LADRILLO: 1 }) }));
+    await dobleClic('data-doble-arista', 'a1');
+    await pulsarMarca('Confirmar camino');
+    expect(enviar).toHaveBeenCalledExactlyOnceWith({ tipo: 'CONSTRUIR_CAMINO', arista: 'a1' });
+  });
+
+  it('Escape quita la marca sin enviar nada', async () => {
+    mostrar(juego({ vista: conMano(PAGA_POBLADO) }));
+    await dobleClic('data-doble-vertice', V1);
+    await userEvent.keyboard('{Escape}');
+    expect(hayMarca()).toBe(false);
+    expect(enviar).not.toHaveBeenCalled();
+  });
+
+  it('un clic en otro sitio descarta la marca pendiente', async () => {
+    mostrar(juego({ vista: conMano(PAGA_POBLADO) }));
+    await dobleClic('data-doble-vertice', V1);
+    await userEvent.click(zona('data-doble-vertice', V2));
+    expect(hayMarca()).toBe(false);
+    expect(enviar).not.toHaveBeenCalled();
+  });
+
+  it('el ratón que pasa por otros sitios camino del aro no la descarta', async () => {
+    mostrar(juego({ vista: conMano(PAGA_POBLADO) }));
+    await dobleClic('data-doble-vertice', V1);
+    await userEvent.hover(zona('data-doble-vertice', V2));
+    expect(hayMarca()).toBe(true);
+  });
+
+  it('si no alcanzan los recursos no pone el aro: avisa de lo que falta y suena el error', async () => {
+    mostrar(juego());
+    await dobleClic('data-doble-vertice', V1);
+    expect(hayMarca()).toBe(false);
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'No tienes recursos para un poblado: te falta 1 de ladrillo y 1 de oveja',
+    );
+    expect(sonido.reproducir).toHaveBeenCalledWith('error');
+    expect(screen.getByText('Te falta 1 de ladrillo y 1 de oveja')).toBeInTheDocument();
+    expect(enviar).not.toHaveBeenCalled();
+  });
+
+  it('si el servidor rechaza por recursos (la mano cambió), el aviso nombra la pieza', async () => {
+    enviar.mockResolvedValue('No tienes recursos suficientes');
+    mostrar(juego({ vista: conMano(PAGA_POBLADO) }));
+    await dobleClic('data-doble-vertice', V1);
+    await pulsarMarca('Confirmar poblado');
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'No tienes recursos para un poblado',
+    );
+    expect(sonido.reproducir).toHaveBeenCalledWith('error');
+  });
+
+  it('otro rechazo del servidor se muestra tal cual', async () => {
+    enviar.mockResolvedValue('Tiene que conectar con tus caminos');
+    mostrar(juego({ vista: conMano({ MADERA: 1, LADRILLO: 1 }) }));
+    await dobleClic('data-doble-arista', 'a2');
+    await pulsarMarca('Confirmar camino');
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Tiene que conectar con tus caminos',
+    );
+  });
+
+  it('el costo apuntado se apaga solo pasados unos segundos', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      mostrar(juego({ vista: conMano(PAGA_POBLADO) }));
+      await userEvent.click(zona('data-doble-vertice', V1));
+      expect(screen.getByText('Poner un poblado')).toBeInTheDocument();
+      act(() => {
+        vi.advanceTimersByTime(4500);
+      });
+      expect(screen.queryByText('Poner un poblado')).not.toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('la marca de confirmar se quita sola si no se usa', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      mostrar(juego({ vista: conMano(PAGA_POBLADO) }));
+      await dobleClic('data-doble-vertice', V1);
+      expect(hayMarca()).toBe(true);
+      act(() => {
+        vi.advanceTimersByTime(8500);
+      });
+      expect(hayMarca()).toBe(false);
+      expect(enviar).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('fuera de mi turno no hay zonas de doble clic', () => {
+    mostrar(juego({ vista: vistaDePrueba({ turnoDe: 'j2' }) }));
+    expect(document.querySelector('[data-doble-vertice]')).toBeNull();
+    expect(document.querySelector('[data-doble-arista]')).toBeNull();
+  });
+
+  it('antes de tirar los dados tampoco', () => {
+    mostrar(juego({ vista: vistaDePrueba({ fase: 'PRE_TIRADA', dados: null }) }));
+    expect(document.querySelector('[data-doble-vertice]')).toBeNull();
+  });
+
+  it('tras elegir una herramienta se usa su toque de confirmar, no el doble clic', async () => {
+    mostrar(juego({ sitios: { poblados: [V1, V2] } }));
+    await userEvent.click(screen.getByRole('button', { name: /Poblado/ }));
+    expect(document.querySelector('[data-doble-vertice]')).toBeNull();
+  });
+});
+
 describe('Partida: construir con vista previa', () => {
   it('elegir poblado resalta solo los sitios legales', async () => {
     mostrar(juego({ sitios: { poblados: [V2] } }));
@@ -220,6 +407,27 @@ describe('Partida: preparación', () => {
     expect(enviar).toHaveBeenCalledWith({ tipo: 'COLOCAR_POBLADO_INICIAL', vertice: V2 });
   });
 
+  it('los controles de la jugada van debajo del tablero y no sobre él (tapaban los puertos)', async () => {
+    mostrar(
+      juego({
+        vista: vistaDePrueba({ fase: 'PREPARACION_POBLADO', dados: null }),
+        sitios: { poblados: [V1, V2] },
+      }),
+    );
+    await userEvent.click(screen.getByRole('button', { name: `Construir en el vértice ${V2}` }));
+    const boton = screen.getByRole('button', { name: 'Colocar aquí' });
+    const principal = screen.getByRole('main');
+    expect(principal).toContainElement(boton);
+    // Ningún contenedor del tablero (hasta `main`, sin incluirlo) puede contener el botón.
+    for (
+      let el = screen.getByLabelText('Tablero de juego').parentElement;
+      el && el !== principal;
+      el = el.parentElement
+    ) {
+      expect(el).not.toContainElement(boton);
+    }
+  });
+
   it('el botón grande también coloca un camino', async () => {
     mostrar(
       juego({
@@ -295,6 +503,7 @@ describe('Partida: comercio con cartas', () => {
       entrega: { MADERA: 1, LADRILLO: 0, OVEJA: 0, TRIGO: 0, MINERAL: 0 },
       pide: { MADERA: 0, LADRILLO: 0, OVEJA: 0, TRIGO: 1, MINERAL: 0 },
       rechazadoPor: [],
+      aceptadoPor: [],
     };
     mostrar(juego({ vista: vistaDePrueba({ turnoDe: 'j2', tratos: [trato] }) }));
     await userEvent.click(screen.getByRole('button', { name: 'Aceptar' }));
@@ -455,14 +664,21 @@ describe('Partida: dados', () => {
     expect(screen.getByText('7')).toBeInTheDocument();
   });
 
-  it('las casillas del número que salió laten en el tablero unos segundos', () => {
+  it('las casillas del número que salió se marcan en el tablero unos segundos', () => {
     mostrar(juego({ resaltado: 8 }));
-    expect(screen.getByText('Produce con el 8')).toBeInTheDocument();
+    expect(screen.getByText('Salió el 8, pero aquí nadie cobra')).toBeInTheDocument();
+  });
+
+  it('la casilla de la que salieron cartas late y dice cuántas', () => {
+    mostrar(juego({ resaltado: 8, entregadas: new Map([['0,0', 3]]) }));
+    expect(screen.getByText('Produce con el 8: salen 3 cartas')).toBeInTheDocument();
+    expect(screen.getByText('+3')).toBeInTheDocument();
   });
 
   it('pasado ese tiempo, o si salió un número sin casillas, no se resalta nada', () => {
     mostrar(juego({ resaltado: null }));
     expect(screen.queryByText(/Produce con el/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/nadie cobra/)).not.toBeInTheDocument();
   });
 });
 

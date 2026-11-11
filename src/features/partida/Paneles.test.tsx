@@ -525,17 +525,121 @@ describe('Comercio', () => {
     });
   });
 
-  it('con la banca se elige un recurso de cada lado y se cambia', async () => {
+  it('con la banca se da un recurso, se pide otro y se cambia', async () => {
     const { alAccionar } = abrir({ mano: MUCHAS });
     await userEvent.click(screen.getByRole('button', { name: 'Banca' }));
-    await userEvent.click(screen.getByRole('button', { name: 'Doy: añadir madera' }));
     await userEvent.click(screen.getByRole('button', { name: 'Doy: añadir oveja' }));
     await userEvent.click(screen.getByRole('button', { name: 'Pido: añadir mineral' }));
     await userEvent.click(screen.getByRole('button', { name: 'Enviar oferta' }));
     expect(alAccionar).toHaveBeenCalledWith({
       tipo: 'CAMBIAR_CON_BANCA',
-      entrega: 'OVEJA',
-      recibe: 'MINERAL',
+      entrega: { OVEJA: 4 },
+      recibe: { MINERAL: 1 },
+    });
+  });
+
+  describe('con la banca se pueden mezclar recursos y repetir cambios', () => {
+    /** Ocho de madera para poder dar dos razones de una vez. */
+    const RICA = { ...MUCHAS, MADERA: 8 };
+    const banca = async (manoInicial: Cantidades = RICA) => {
+      const { alAccionar } = abrir({ mano: manoInicial });
+      await userEvent.click(screen.getByRole('button', { name: 'Banca' }));
+      return alAccionar;
+    };
+    const tocar = async (nombre: string, veces = 1) => {
+      for (let i = 0; i < veces; i += 1) {
+        // eslint-disable-next-line no-await-in-loop
+        await userEvent.click(screen.getByRole('button', { name: nombre }));
+      }
+    };
+    const enviar = () => screen.getByRole('button', { name: 'Enviar oferta' });
+    const pista = () => document.querySelector('[data-pista-banca]')!;
+
+    it('4 de madera + 4 de trigo por 2 de oveja', async () => {
+      const alAccionar = await banca();
+      await tocar('Doy: añadir madera');
+      await tocar('Doy: añadir trigo');
+      await tocar('Pido: añadir oveja', 2);
+      await userEvent.click(enviar());
+      expect(alAccionar).toHaveBeenCalledWith({
+        tipo: 'CAMBIAR_CON_BANCA',
+        entrega: { MADERA: 4, TRIGO: 4 },
+        recibe: { OVEJA: 2 },
+      });
+    });
+
+    it('8 de madera + 4 de trigo por 2 de oveja y 1 de ladrillo', async () => {
+      const alAccionar = await banca();
+      await tocar('Doy: añadir madera', 2);
+      await tocar('Doy: añadir trigo');
+      await tocar('Pido: añadir oveja', 2);
+      await tocar('Pido: añadir ladrillo');
+      expect(pista()).toHaveTextContent('3 cambios: listo para enviar.');
+      await userEvent.click(enviar());
+      expect(alAccionar).toHaveBeenCalledWith({
+        tipo: 'CAMBIAR_CON_BANCA',
+        entrega: { MADERA: 8, TRIGO: 4 },
+        recibe: { OVEJA: 2, LADRILLO: 1 },
+      });
+    });
+
+    it('no se envía hasta que las cartas pedidas son tantas como cambios', async () => {
+      await banca();
+      expect(enviar()).toBeDisabled();
+      expect(pista()).toHaveTextContent('Elige qué das');
+      await tocar('Doy: añadir madera', 2);
+      expect(pista()).toHaveTextContent('Elige 2 cartas más.');
+      await tocar('Pido: añadir oveja');
+      expect(enviar()).toBeDisabled();
+      expect(pista()).toHaveTextContent('Elige 1 carta más.');
+      await tocar('Pido: añadir ladrillo');
+      expect(enviar()).toBeEnabled();
+      expect(pista()).toHaveTextContent('2 cambios: listo para enviar.');
+    });
+
+    it('no deja pedir más cartas que cambios', async () => {
+      await banca();
+      await tocar('Doy: añadir madera');
+      await tocar('Pido: añadir oveja');
+      expect(screen.getByRole('button', { name: 'Pido: añadir trigo' })).toBeDisabled();
+      expect(screen.getByRole('button', { name: 'Pido: añadir oveja' })).toBeDisabled();
+    });
+
+    it('sin nada que dar tampoco se puede pedir', async () => {
+      await banca();
+      expect(screen.getByRole('button', { name: 'Pido: añadir oveja' })).toBeDisabled();
+    });
+
+    it('si se quita lo que se da y sobran cartas pedidas, avisa y no se envía', async () => {
+      await banca();
+      await tocar('Doy: añadir madera', 2);
+      await tocar('Pido: añadir oveja', 2);
+      await tocar('Doy: quitar madera');
+      expect(enviar()).toBeDisabled();
+      expect(pista()).toHaveTextContent('Pides 1 de más');
+    });
+
+    it('un recurso que se da no se puede pedir, ni uno que se pide darlo', async () => {
+      await banca();
+      await tocar('Doy: añadir madera');
+      expect(screen.getByRole('button', { name: 'Pido: añadir madera' })).toBeDisabled();
+      await tocar('Pido: añadir oveja');
+      expect(screen.getByRole('button', { name: 'Doy: añadir oveja' })).toBeDisabled();
+    });
+
+    it('cada toque en «Doy» suma una razón completa y el signo menos la quita', async () => {
+      await banca();
+      await tocar('Doy: añadir madera', 2);
+      expect(screen.getByRole('button', { name: 'Doy: añadir madera' })).toHaveTextContent('8');
+      await tocar('Doy: quitar madera');
+      expect(screen.getByRole('button', { name: 'Doy: añadir madera' })).toHaveTextContent('4');
+    });
+
+    it('no deja dar más razones completas de las que se tienen (7 de madera: solo una)', async () => {
+      await banca({ ...RICA, MADERA: 7 });
+      await tocar('Doy: añadir madera');
+      expect(screen.getByRole('button', { name: 'Doy: añadir madera' })).toBeDisabled();
+      expect(screen.getByRole('button', { name: 'Doy: añadir madera' })).toHaveTextContent('4');
     });
   });
 
@@ -543,7 +647,7 @@ describe('Comercio', () => {
     abrir({ mano: MUCHAS });
     await userEvent.click(screen.getByRole('button', { name: 'Banca' }));
     await userEvent.click(screen.getByRole('button', { name: 'Doy: añadir madera' }));
-    await userEvent.click(screen.getByRole('button', { name: 'Pido: añadir madera' }));
+    expect(screen.getByRole('button', { name: 'Pido: añadir madera' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Enviar oferta' })).toBeDisabled();
   });
 
@@ -571,8 +675,8 @@ describe('Comercio', () => {
       await userEvent.click(screen.getByRole('button', { name: 'Enviar oferta' }));
       expect(alAccionar).toHaveBeenCalledWith({
         tipo: 'CAMBIAR_CON_BANCA',
-        entrega: 'OVEJA',
-        recibe: 'TRIGO',
+        entrega: { OVEJA: 4 },
+        recibe: { TRIGO: 1 },
       });
     });
 
@@ -702,6 +806,7 @@ describe('Ofertas', () => {
     entrega: { MADERA: 1, LADRILLO: 0, OVEJA: 0, TRIGO: 0, MINERAL: 0 },
     pide: { MADERA: 0, LADRILLO: 0, OVEJA: 2, TRIGO: 0, MINERAL: 0 },
     rechazadoPor: [],
+    aceptadoPor: [],
   };
   const oferta = (tratos: Trato[], onAccion = vi.fn()) => {
     render(
@@ -754,6 +859,124 @@ describe('Ofertas', () => {
     expect(screen.queryByRole('button', { name: 'Aceptar' })).not.toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Cancelar' }));
     expect(alAccionar).toHaveBeenCalledWith({ tipo: 'CANCELAR_TRATO', tratoId: 't1' });
+  });
+
+  const nombresDeCartas = (fila: HTMLElement): (string | null)[] =>
+    within(fila)
+      .getAllByRole('img')
+      .map((img) => img.getAttribute('aria-label'))
+      .filter((nombre) => nombre !== null && /^\d+ de /.test(nombre));
+
+  it('la cabecera muestra a quién va la oferta y marca con una cruz a quien ya rechazó', () => {
+    oferta([{ ...trato, rechazadoPor: ['j3'] }]);
+    const fila = screen.getByRole('listitem', { name: 'Oferta de Beto' });
+    // Ana aparece en la cabecera y en su fila de «da»; Caro, solo en la cabecera y con su cruz.
+    expect(within(fila).getAllByText('Ana (tú)').length).toBeGreaterThan(0);
+    expect(within(fila).getByText('Caro rechazó')).toBeInTheDocument();
+    expect(within(fila).queryByText('Caro')).not.toBeInTheDocument();
+  });
+
+  it('quien responde ve primero lo que recibe del proponente y luego lo que da', () => {
+    oferta([trato]);
+    const fila = screen.getByRole('listitem', { name: 'Oferta de Beto' });
+    expect(nombresDeCartas(fila)).toEqual(['1 de madera', '2 de oveja']);
+    expect(
+      within(fila)
+        .getAllByText(/^(recibe|da)$/)
+        .map((e) => e.textContent),
+    ).toEqual(['recibe', 'da']);
+  });
+
+  it('en mi oferta primero va lo que pido al grupo y luego lo que doy', () => {
+    oferta([{ ...trato, proponente: 'j1' }]);
+    const fila = screen.getByRole('listitem', { name: 'Oferta de Ana' });
+    expect(nombresDeCartas(fila)).toEqual(['2 de oveja', '1 de madera']);
+    expect(within(fila).getByText('Todos')).toBeInTheDocument();
+    expect(
+      within(fila)
+        .getAllByText(/^(recibe|da)$/)
+        .map((e) => e.textContent),
+    ).toEqual(['recibe', 'da']);
+  });
+
+  it('una oferta a un solo jugador muestra a ese jugador como quien recibe', () => {
+    oferta([{ ...trato, proponente: 'j1', destinatario: 'j2' }]);
+    const fila = screen.getByRole('listitem', { name: 'Oferta de Ana' });
+    expect(within(fila).queryByText('Todos')).not.toBeInTheDocument();
+    expect(within(fila).getAllByText('Beto').length).toBeGreaterThan(0);
+  });
+
+  describe('elegir con quién se cierra', () => {
+    it('quienes ya aceptaron llevan un check en la cabecera', () => {
+      oferta([{ ...trato, aceptadoPor: ['j3'] }]);
+      const fila = screen.getByRole('listitem', { name: 'Oferta de Beto' });
+      expect(within(fila).getByText('Caro aceptó')).toBeInTheDocument();
+    });
+
+    it('quien ya aceptó no puede responder otra vez y ve que espera al proponente', () => {
+      oferta([{ ...trato, aceptadoPor: ['j1'] }]);
+      expect(screen.queryByRole('button', { name: 'Aceptar' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Rechazar' })).not.toBeInTheDocument();
+      expect(
+        screen.getByText('Aceptaste. Esperando a que Beto cierre el trato.'),
+      ).toBeInTheDocument();
+      // Sigue viendo la oferta desde su lado: primero lo que recibe, luego lo que da.
+      const fila = screen.getByRole('listitem', { name: 'Oferta de Beto' });
+      expect(nombresDeCartas(fila)).toEqual(['1 de madera', '2 de oveja']);
+    });
+
+    it('el proponente ve a quienes aceptaron y cierra con uno pulsando su check', async () => {
+      const alAccionar = oferta([{ ...trato, proponente: 'j1', aceptadoPor: ['j2', 'j3'] }]);
+      const lista = screen.getByRole('list', { name: 'Quienes aceptaron' });
+      expect(within(lista).getAllByRole('listitem')).toHaveLength(2);
+      expect(screen.getByText('Aceptaron varios: elige con quién cerrar')).toBeInTheDocument();
+      await userEvent.click(screen.getByRole('button', { name: 'Cerrar el trato con Caro' }));
+      expect(alAccionar).toHaveBeenCalledExactlyOnceWith({
+        tipo: 'CONFIRMAR_TRATO',
+        tratoId: 't1',
+        con: 'j3',
+      });
+    });
+
+    it('con un solo aceptante también se cierra con su check, sin esperar a los demás', async () => {
+      const alAccionar = oferta([{ ...trato, proponente: 'j1', aceptadoPor: ['j2'] }]);
+      expect(screen.getByText('Aceptó: ciérralo con el check')).toBeInTheDocument();
+      await userEvent.click(screen.getByRole('button', { name: 'Cerrar el trato con Beto' }));
+      expect(alAccionar).toHaveBeenCalledWith({
+        tipo: 'CONFIRMAR_TRATO',
+        tratoId: 't1',
+        con: 'j2',
+      });
+    });
+
+    it('mientras nadie acepta no hay lista de aceptantes', () => {
+      oferta([{ ...trato, proponente: 'j1' }]);
+      expect(screen.queryByRole('list', { name: 'Quienes aceptaron' })).not.toBeInTheDocument();
+    });
+
+    it('solo el proponente puede cerrar: los demás no ven los checks de cierre', () => {
+      oferta([{ ...trato, aceptadoPor: ['j3'] }]);
+      expect(screen.queryByRole('list', { name: 'Quienes aceptaron' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /Cerrar el trato con/ })).not.toBeInTheDocument();
+    });
+
+    it('la lista de aceptantes se esconde al plegar la oferta', async () => {
+      oferta([{ ...trato, proponente: 'j1', aceptadoPor: ['j2'] }]);
+      await userEvent.click(screen.getByRole('button', { name: 'Plegar la oferta' }));
+      expect(screen.queryByRole('list', { name: 'Quienes aceptaron' })).not.toBeInTheDocument();
+    });
+  });
+
+  it('se pliega a solo la cabecera y se vuelve a desplegar', async () => {
+    oferta([trato]);
+    const plegador = screen.getByRole('button', { name: 'Plegar la oferta' });
+    expect(plegador).toHaveAttribute('aria-expanded', 'true');
+    await userEvent.click(plegador);
+    expect(screen.queryByRole('button', { name: 'Aceptar' })).not.toBeInTheDocument();
+    const desplegador = screen.getByRole('button', { name: 'Desplegar la oferta' });
+    expect(desplegador).toHaveAttribute('aria-expanded', 'false');
+    await userEvent.click(desplegador);
+    expect(screen.getByRole('button', { name: 'Aceptar' })).toBeInTheDocument();
   });
 });
 

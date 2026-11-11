@@ -20,6 +20,14 @@ describe('TiraDeJugadores', () => {
     expect(filas[0]).not.toHaveAttribute('aria-current');
   });
 
+  it('cada jugador lleva su nombre a la vista, no solo la inicial', () => {
+    render(<TiraDeJugadores vista={base} nombreDe={nombreDe} indiceDe={indiceDe} />);
+    const filas = within(screen.getByRole('list')).getAllByRole('listitem');
+    // Una copia es para lectores de pantalla y otra, `aria-hidden`, es el nombre que se ve.
+    const copias = within(filas[1]!).getAllByText('Jugador 2');
+    expect(copias.some((el) => el.getAttribute('aria-hidden') === 'true')).toBe(true);
+  });
+
   it('en la construcción especial marca a quien construye', () => {
     const vista = vistaDePrueba({
       fase: 'CONSTRUCCION_ESPECIAL',

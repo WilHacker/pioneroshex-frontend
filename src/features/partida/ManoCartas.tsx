@@ -26,7 +26,9 @@ export function ManoCartas({ recursos }: Props) {
       className="flex items-end rounded-xl border-[3px] border-[#101c28] bg-[#f5efe0] px-4 pt-3 pb-2 shadow"
     >
       {tengo.map((r, i) => (
-        <li key={r} className="-ml-3 first:ml-0">
+        // La carta de la izquierda va por encima de la siguiente: el número de su esquina
+        // sobresale hacia la derecha y, si no, la carta vecina lo taparía.
+        <li key={r} className="relative -ml-3 first:ml-0" style={{ zIndex: tengo.length - i }}>
           <CartaRecurso
             recurso={r}
             cantidad={recursos[r]}

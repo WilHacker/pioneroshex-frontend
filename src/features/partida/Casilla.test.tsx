@@ -10,6 +10,41 @@ const dibujar = (terreno: Terreno, ficha: number | null = null) =>
     </svg>,
   );
 
+describe('Casilla: la ficha y el resaltado de la tirada', () => {
+  const conTirada = (entrega?: number) =>
+    render(
+      <svg>
+        <Casilla
+          terreno="PASTO"
+          ficha={5}
+          centro={{ x: 0, y: 0 }}
+          resaltada
+          {...(entrega !== undefined && { entrega })}
+        />
+      </svg>,
+    );
+
+  it('el número se ve con un contorno que lo separa del fondo', () => {
+    const { container } = dibujar('PASTO', 5);
+    const numero = [...container.querySelectorAll('text')].find((t) => t.textContent === '5');
+    expect(numero?.getAttribute('paint-order')).toBe('stroke');
+  });
+
+  it('si salieron cartas, la casilla lo dice y muestra cuántas', () => {
+    const { container, getByText } = conTirada(3);
+    expect(getByText('Produce con el 5: salen 3 cartas')).toBeInTheDocument();
+    expect(getByText('+3')).toBeInTheDocument();
+    expect(container.querySelector('.sitio')).toBeInTheDocument();
+  });
+
+  it('si salió su número y no salió nada, solo se dibuja el contorno', () => {
+    const { container, getByText, queryByText } = conTirada();
+    expect(getByText('Salió el 5, pero aquí nadie cobra')).toBeInTheDocument();
+    expect(queryByText(/^\+/)).not.toBeInTheDocument();
+    expect(container.querySelector('.sitio')).not.toBeInTheDocument();
+  });
+});
+
 describe('Casilla: el icono de cada terreno', () => {
   it.each([
     ['BOSQUE', '/recursos/madera.svg'],

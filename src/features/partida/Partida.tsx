@@ -3,17 +3,20 @@
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { IconoAccion } from '@/components/arte/IconosEstado';
+import { faltaPara, textoDeFalta } from '@/lib/costos';
 import type { Credencial, Hex } from '@/lib/esquemas';
 import { textoDeMotivo } from '@/lib/mensajes';
 import { marcarSorteoVisto, yaVioElSorteo } from '@/lib/sesion';
 import { sonidoDelJuego, type Efecto } from '@/lib/sonido';
 import { victimasEn } from '@/lib/tablero';
 import { AvisoDeAbandono } from './AvisoDeAbandono';
+import { AvisoDeLogro } from './AvisoDeLogro';
 import { Banco } from './Banco';
 import { CartasDesarrollo } from './CartasDesarrollo';
 import { colorDeJugador } from '@/lib/colores';
 import { Comercio } from './Comercio';
 import { Dados } from './Dados';
+import { EfectosEnMapa } from './EfectosEnMapa';
 import { EntregaDeRecursos } from './EntregaDeRecursos';
 import { SorteoDeOrden } from './SorteoDeOrden';
 import { efectoDe } from './efectos';
@@ -21,23 +24,27 @@ import { Jugadores } from './Jugadores';
 import {
   accionDeArista,
   accionDeLadron,
+  accionDeSitioRapido,
   accionDeVertice,
   esMiTurno,
   mensajeDeFase,
   modoEfectivo,
   objetivoDe,
+  puedeConstruirAlDobleClic,
   sitiosDe,
+  TEXTO_DE_SITIO,
   type Modo,
 } from './logica';
 import { ManoCartas } from './ManoCartas';
 import { Ofertas } from './Ofertas';
+import { PanelDeConstruccion } from './PanelDeConstruccion';
 import { PanelDescarte } from './PanelDescarte';
 import { PantallaFinal } from './PantallaFinal';
 import { Paleta } from './Paleta';
 import { Registro } from './Registro';
 import { Reloj } from './Reloj';
 import { TiraDeJugadores } from './TiraDeJugadores';
-import { Tablero } from './Tablero';
+import { Tablero, type SitioRapido } from './Tablero';
 import { useJuego } from './useJuego';
 
 type Props = {
@@ -52,6 +59,10 @@ interface VictimaPendiente {
 }
 
 const MAX_CARRETERAS = 2;
+/** Cuánto se queda a la vista el costo de un sitio apuntado, si no se mueve el ratón a otro. */
+const APUNTADO_MS = 4000;
+/** Cuánto espera la marca de confirmar (el aro verde del mapa) antes de quitarse sola. */
+const CONFIRMAR_MS = 8000;
 const BOTON_REDONDO =
   'flex size-10 items-center justify-center rounded-full bg-black/30 text-white backdrop-blur enabled:hover:bg-black/45';
 
@@ -68,6 +79,10 @@ export function Partida({ credencial, nombres }: Props) {
   const [comercioAbierto, setComercioAbierto] = useState(false);
   const [confirmandoAbandono, setConfirmandoAbandono] = useState(false);
   const [sorteoCerrado, setSorteoCerrado] = useState(false);
+  /** El sitio del mapa al que se apunta (ratón encima o un toque): se muestra su costo. */
+  const [apuntado, setApuntado] = useState<SitioRapido | null>(null);
+  /** El sitio donde se pidió construir con doble clic: espera confirmación. */
+  const [rapido, setRapido] = useState<SitioRapido | null>(null);
 
   const vista = juego.datos?.vista ?? null;
   const yo = vista?.yo ?? null;
@@ -91,6 +106,31 @@ export function Partida({ credencial, nombres }: Props) {
     if (miTurno && !eraMiTurno.current) sonido.reproducir('turno');
     eraMiTurno.current = miTurno;
   }, [miTurno, sonido]);
+
+  // El cartel del costo al apuntar se apaga solo; la marca de confirmar se quita con Escape o sola.
+  useEffect(() => {
+    if (apuntado === null) return;
+    const id = setTimeout(() => setApuntado(null), APUNTADO_MS);
+    return () => clearTimeout(id);
+  }, [apuntado]);
+  useEffect(() => {
+    if (rapido === null) return;
+    const id = setTimeout(() => setRapido(null), CONFIRMAR_MS);
+    const alTeclear = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape') setRapido(null);
+    };
+    window.addEventListener('keydown', alTeclear);
+    return () => {
+      clearTimeout(id);
+      window.removeEventListener('keydown', alTeclear);
+    };
+  }, [rapido]);
+  // Al acabar mi turno, lo que estaba a medias ya no vale (elegir otra herramienta ya lo limpia).
+  useEffect(() => {
+    // Hay que sincronizar con un cambio que llega del servidor, no se puede derivar al renderizar.
+    // oxlint-disable-next-line react/set-state-in-effect
+    if (!miTurno) setRapido(null);
+  }, [miTurno]);
 
   if (juego.rechazo !== null) {
     return (
@@ -142,16 +182,50 @@ export function Partida({ credencial, nombres }: Props) {
     setPrevia(null);
     setCarreteras([]);
     setPendiente(null);
+    setApuntado(null);
+    setRapido(null);
   };
 
-  const ejecutar = async (accion: object | null): Promise<void> => {
+  /** `pieza` (p. ej. «un poblado») afina el aviso cuando faltan recursos: dice qué no alcanzó a pagar. */
+  const ejecutar = async (accion: object | null, pieza?: string): Promise<void> => {
     if (!accion) return;
     setOcupado(true);
     const error = await juego.enviar(accion);
     setOcupado(false);
-    setAviso(error);
+    setAviso(
+      error !== null && pieza !== undefined && error === textoDeMotivo('RECURSOS_INSUFICIENTES')
+        ? `No tienes recursos para ${pieza}`
+        : error,
+    );
     if (error === null) limpiar();
     else sonido.reproducir('error');
+  };
+
+  // Atajo del mapa: apuntar a un sitio muestra su costo; doble clic deja la pieza en fantasma con el
+  // aro verde, y un clic en el aro construye. Si no alcanzan los recursos, solo avisa de lo que falta.
+  const dobleClicActivo = !yaAbandone && !terminada && puedeConstruirAlDobleClic(vista, modo);
+  const alDobleClic = (sitio: SitioRapido): void => {
+    if (ocupado) return;
+    const falta = faltaPara(miMano, sitio.tipo);
+    if (Object.keys(falta).length > 0) {
+      setRapido(null);
+      setApuntado(sitio);
+      setAviso(
+        `No tienes recursos para ${TEXTO_DE_SITIO[sitio.tipo].pieza}: te falta ${textoDeFalta(falta)}`,
+      );
+      sonido.reproducir('error');
+      return;
+    }
+    setApuntado(null);
+    setRapido(sitio);
+    setAviso(null);
+    sonido.reproducir('clic');
+  };
+  const confirmarRapido = (): void => {
+    if (rapido === null || ocupado) return;
+    const sitio = rapido;
+    setRapido(null);
+    void ejecutar(accionDeSitioRapido(sitio), TEXTO_DE_SITIO[sitio.tipo].pieza);
   };
 
   /** Primer toque: vista previa. Segundo toque en el mismo sitio: confirma. */
@@ -249,6 +323,7 @@ export function Partida({ credencial, nombres }: Props) {
               Reconectando…
             </output>
           )}
+          <AvisoDeLogro ultimos={juego.ultimos} nombreDe={nombreDe} />
           {aviso && (
             <p
               role="alert"
@@ -270,11 +345,50 @@ export function Partida({ credencial, nombres }: Props) {
               previa={previa}
               aristasElegidas={carreteras}
               numeroResaltado={juego.resaltado}
+              entregas={juego.entregadas}
+              capa={
+                <EfectosEnMapa
+                  ultimos={juego.ultimos}
+                  mesa={mesa}
+                  indiceDe={indiceDe}
+                  nombreDe={nombreDe}
+                  yo={yo}
+                />
+              }
               zoom
               onVertice={(id) => tocarSitio(id, accionDeVertice(vista, modo, id))}
               onArista={alArista}
               onCasilla={alCasilla}
+              {...(dobleClicActivo && {
+                onDoble: alDobleClic,
+                onApuntar: (sitio: SitioRapido | null, porClic?: boolean) => {
+                  if (rapido !== null) {
+                    // Un clic en otro sitio descarta la marca de confirmar; el ratón que pasa por encima, no.
+                    if (porClic && sitio !== null && sitio.id !== rapido.id) {
+                      setRapido(null);
+                      setApuntado(sitio);
+                    }
+                    return;
+                  }
+                  setApuntado(sitio);
+                },
+                onConfirmarFantasma: confirmarRapido,
+                fantasma: rapido,
+              })}
             />
+
+            {dobleClicActivo && (rapido ?? apuntado) !== null && (
+              <div
+                aria-hidden="true"
+                className="pointer-events-none absolute top-2 left-2 z-20 origin-top-left scale-90"
+              >
+                <PanelDeConstruccion
+                  sitio={(rapido ?? apuntado) as SitioRapido}
+                  mano={miMano}
+                  color={miColor}
+                />
+              </div>
+            )}
 
             <div className="absolute top-0 left-1/2 z-20 -translate-x-1/2">
               <Ofertas
@@ -296,62 +410,6 @@ export function Partida({ credencial, nombres }: Props) {
               />
             </div>
 
-            <div className="absolute bottom-2 left-1/2 z-20 flex -translate-x-1/2 flex-col items-center gap-2">
-              {miDescarte > 0 && miMano && (
-                <PanelDescarte
-                  cantidad={miDescarte}
-                  mano={miMano}
-                  ocupado={ocupado}
-                  onDescartar={(recursos) => alAccion({ tipo: 'DESCARTAR_RECURSOS', recursos })}
-                />
-              )}
-              {/* Un botón grande fuera del tablero: la marca sobre la pieza es pequeña y puede quedar sobre un número. */}
-              {previa !== null && modo !== 'CARRETERAS' && (
-                <button
-                  type="button"
-                  disabled={ocupado}
-                  onClick={() => void ejecutar(accionDePrevia)}
-                  className="flex items-center gap-2 rounded-full bg-hoja px-7 py-3 text-lg font-extrabold text-white shadow-lg ring-4 ring-white/70 enabled:hover:brightness-110 disabled:opacity-40"
-                >
-                  <IconoAccion tipo="ACEPTAR" />
-                  Colocar aquí
-                </button>
-              )}
-              {modo === 'CARRETERAS' && (
-                <button
-                  type="button"
-                  aria-label={`Construir ${carreteras.length} ${carreteras.length === 1 ? 'camino' : 'caminos'}`}
-                  disabled={ocupado || carreteras.length === 0}
-                  onClick={() =>
-                    alAccion({ tipo: 'JUGAR_CONSTRUCCION_CARRETERAS', aristas: carreteras })
-                  }
-                  className="flex items-center gap-2 rounded-full bg-hoja px-5 py-2 font-extrabold text-white shadow-lg enabled:hover:brightness-110 disabled:opacity-40"
-                >
-                  <IconoAccion tipo="ACEPTAR" />
-                  {carreteras.length}/{MAX_CARRETERAS}
-                </button>
-              )}
-              {pendiente && (
-                <fieldset className="flex items-center gap-2 rounded-2xl bg-niebla px-3 py-2 text-tinta shadow-lg">
-                  <legend className="sr-only">Elegir a quién robar</legend>
-                  {pendiente.victimas.map((id) => (
-                    <button
-                      key={id}
-                      type="button"
-                      aria-label={nombreDe(id)}
-                      title={nombreDe(id)}
-                      disabled={ocupado}
-                      onClick={() => void ejecutar(accionDeLadron(modo, pendiente.destino, id))}
-                      className="flex size-12 items-center justify-center rounded-full text-xl font-extrabold text-white ring-4 ring-white hover:ring-azafran"
-                      style={{ backgroundColor: colorDeJugador(indiceDe(id)) }}
-                    >
-                      {nombreDe(id).slice(0, 1).toUpperCase()}
-                    </button>
-                  ))}
-                </fieldset>
-              )}
-            </div>
-
             {yaAbandone && !terminada && (
               <output className="absolute inset-0 z-30 flex items-center justify-center bg-black/40 backdrop-blur-sm">
                 <span className="flex max-w-sm flex-col items-center gap-4 rounded-3xl bg-niebla px-10 py-8 text-center text-tinta shadow-2xl">
@@ -369,6 +427,62 @@ export function Partida({ credencial, nombres }: Props) {
 
             {terminada && (
               <PantallaFinal vista={vista} credencial={credencial} nombreDe={nombreDe} />
+            )}
+          </div>
+
+          {/* Los controles de la jugada van debajo del tablero, no encima: flotando sobre su borde tapaban los puertos. Vacío, no ocupa sitio. */}
+          <div className="z-20 flex shrink-0 flex-col items-center gap-2 empty:hidden">
+            {miDescarte > 0 && miMano && (
+              <PanelDescarte
+                cantidad={miDescarte}
+                mano={miMano}
+                ocupado={ocupado}
+                onDescartar={(recursos) => alAccion({ tipo: 'DESCARTAR_RECURSOS', recursos })}
+              />
+            )}
+            {previa !== null && modo !== 'CARRETERAS' && (
+              <button
+                type="button"
+                disabled={ocupado}
+                onClick={() => void ejecutar(accionDePrevia)}
+                className="flex items-center gap-2 rounded-full bg-hoja px-7 py-3 text-lg font-extrabold text-white shadow-lg ring-4 ring-white/70 enabled:hover:brightness-110 disabled:opacity-40"
+              >
+                <IconoAccion tipo="ACEPTAR" />
+                Colocar aquí
+              </button>
+            )}
+            {modo === 'CARRETERAS' && (
+              <button
+                type="button"
+                aria-label={`Construir ${carreteras.length} ${carreteras.length === 1 ? 'camino' : 'caminos'}`}
+                disabled={ocupado || carreteras.length === 0}
+                onClick={() =>
+                  alAccion({ tipo: 'JUGAR_CONSTRUCCION_CARRETERAS', aristas: carreteras })
+                }
+                className="flex items-center gap-2 rounded-full bg-hoja px-5 py-2 font-extrabold text-white shadow-lg enabled:hover:brightness-110 disabled:opacity-40"
+              >
+                <IconoAccion tipo="ACEPTAR" />
+                {carreteras.length}/{MAX_CARRETERAS}
+              </button>
+            )}
+            {pendiente && (
+              <fieldset className="flex items-center gap-2 rounded-2xl bg-niebla px-3 py-2 text-tinta shadow-lg">
+                <legend className="sr-only">Elegir a quién robar</legend>
+                {pendiente.victimas.map((id) => (
+                  <button
+                    key={id}
+                    type="button"
+                    aria-label={nombreDe(id)}
+                    title={nombreDe(id)}
+                    disabled={ocupado}
+                    onClick={() => void ejecutar(accionDeLadron(modo, pendiente.destino, id))}
+                    className="flex size-12 items-center justify-center rounded-full text-xl font-extrabold text-white ring-4 ring-white hover:ring-azafran"
+                    style={{ backgroundColor: colorDeJugador(indiceDe(id)) }}
+                  >
+                    {nombreDe(id).slice(0, 1).toUpperCase()}
+                  </button>
+                ))}
+              </fieldset>
             )}
           </div>
         </main>

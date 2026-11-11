@@ -93,6 +93,7 @@ export function TableroDemo() {
           sitios={[]}
           previa={null}
           numeroResaltado={resaltado}
+          entregas={new Map(entregas.map((e) => [e.clave, e.cantidad]))}
           onVertice={sinHacer}
           onArista={sinHacer}
           onCasilla={sinHacer}

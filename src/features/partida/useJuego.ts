@@ -3,8 +3,10 @@ import { conectar, type Conexion, type EstadoConexion } from '@/lib/conexion';
 import type { AccionDisponible, EventoJuego, Mesa, Presencia, Sitios, Vista } from '@/lib/esquemas';
 import { textoDeMotivo } from '@/lib/mensajes';
 import { sumaDeDados } from './efectos';
+import { cartasPorCasilla } from './entregas';
 
 const EVENTOS_MAX = 60;
+const SIN_ENTREGAS: ReadonlyMap<string, number> = new Map();
 /** Cuánto tiempo laten en el tablero las casillas del número que salió. */
 const RESALTADO_MS = 5000;
 
@@ -27,6 +29,8 @@ export interface Juego {
   readonly tiradas: number;
   /** El número que acaba de salir, unos segundos; las casillas con ese número laten. */
   readonly resaltado: number | null;
+  /** Cartas que salieron de cada casilla (`q,r`) en esa tirada, mientras dura el resaltado. */
+  readonly entregadas: ReadonlyMap<string, number>;
   /** Hora (de este navegador) en que se acaba el tiempo del turno, o `null` si no hay límite. */
   readonly vence: number | null;
   /** Quién está conectado y a quién juega el piloto; `null` si el servidor aún no lo ha dicho. */
@@ -44,6 +48,7 @@ export function useJuego(salaId: string, token: string): Juego {
   const [ultimos, setUltimos] = useState<Juego['ultimos']>({ numero: 0, eventos: [] });
   const [tiradas, setTiradas] = useState(0);
   const [resaltado, setResaltado] = useState<number | null>(null);
+  const [entregadas, setEntregadas] = useState(SIN_ENTREGAS);
   const [vence, setVence] = useState<number | null>(null);
   const [presencia, setPresencia] = useState<Presencia | null>(null);
   const actual = useRef<Conexion | null>(null);
@@ -75,8 +80,12 @@ export function useJuego(salaId: string, token: string): Juego {
           if (sumas.length > 0) {
             setTiradas((cuenta) => cuenta + sumas.length);
             setResaltado(sumas.at(-1) ?? null);
+            setEntregadas(cartasPorCasilla(n.eventos));
             clearTimeout(apagarResaltado.current);
-            apagarResaltado.current = setTimeout(() => setResaltado(null), RESALTADO_MS);
+            apagarResaltado.current = setTimeout(() => {
+              setResaltado(null);
+              setEntregadas(SIN_ENTREGAS);
+            }, RESALTADO_MS);
           }
         },
         alPresencia: setPresencia,
@@ -106,6 +115,7 @@ export function useJuego(salaId: string, token: string): Juego {
     ultimos,
     tiradas,
     resaltado,
+    entregadas,
     vence,
     presencia,
     enviar,

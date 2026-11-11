@@ -59,6 +59,8 @@ export const esquemaTrato = z.object({
   entrega: esquemaCantidades,
   pide: esquemaCantidades,
   rechazadoPor: z.array(z.string()),
+  /** Quienes dijeron que sí y esperan a que el proponente cierre el trato con alguno. */
+  aceptadoPor: z.array(z.string()),
 });
 export type Trato = z.infer<typeof esquemaTrato>;
 

@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { IconoAccion } from '@/components/arte/IconosEstado';
+import { IconoBanco } from '@/components/arte/IconoBanco';
 import { IconoIntercambio } from '@/components/arte/IconoIntercambio';
+import { IconoAmigos } from '@/components/arte/IconosPortada';
 import {
   RECURSOS,
   type AccionDisponible,
@@ -12,6 +14,7 @@ import {
 import { NOMBRE_RECURSO, textoDeMotivo } from '@/lib/mensajes';
 import { razonDeBanca } from '@/lib/puertos';
 import { CartaRecurso } from './CartaRecurso';
+import { Flecha } from './Flecha';
 import { colorDeJugador } from '@/lib/colores';
 
 type Props = {
@@ -43,6 +46,8 @@ const nombreCapital = (r: Recurso): string =>
 
 type FilaProps = {
   titulo: string;
+  /** Lo que pides (recibes, flecha verde) o lo que das (flecha roja). */
+  recibe: boolean;
   valores: Cantidades;
   /** Máximo por recurso; `null` si no hay manos que respetar. */
   limite: Cantidades | null;
@@ -52,11 +57,14 @@ type FilaProps = {
 };
 
 /** Cinco cartas: tocar una suma 1, el signo menos quita 1. */
-function FilaDeCartas({ titulo, valores, limite, razones, alCambiar }: FilaProps) {
+function FilaDeCartas({ titulo, recibe, valores, limite, razones, alCambiar }: FilaProps) {
   return (
     <fieldset className="flex items-end gap-2">
       <legend className="sr-only">{titulo}</legend>
-      <span className="w-10 shrink-0 text-sm font-extrabold">{titulo}</span>
+      <span aria-hidden="true" className="flex w-12 shrink-0 flex-col items-center gap-0.5 pb-8">
+        <Flecha recibe={recibe} />
+        <span className="text-xs font-extrabold">{titulo}</span>
+      </span>
       {RECURSOS.map((r) => (
         <div key={r} className="flex flex-col items-center gap-1">
           <CartaRecurso
@@ -124,50 +132,71 @@ export function Comercio({
       : null;
   const conBanca = destino === 'BANCA';
 
-  // Con la banca se entregan 4 cartas iguales (3 con un puerto genérico, 2 con el de ese recurso) y
-  // se recibe 1: las razones salen de mis casas en los puertos, igual que las calcula el servidor.
+  // Con la banca cada recurso se paga a su razón (4 cartas iguales, 3 con un puerto genérico, 2 con el
+  // de ese recurso; salen de mis casas en los puertos, igual que las calcula el servidor) y se recibe
+  // una carta por cada cambio completo. Se puede mezclar: cada toque en «Doy» suma una razón entera.
   const razones = Object.fromEntries(
     RECURSOS.map((r) => [r, razonDeBanca(mesa, vista, r)]),
   ) as Record<Recurso, number>;
-  const alcanzaParaBanca = mano
-    ? (Object.fromEntries(
-        RECURSOS.map((r) => [r, mano[r] >= razones[r] ? mano[r] : 0]),
-      ) as Cantidades)
-    : null;
+  const cambios = RECURSOS.reduce((suma, r) => suma + Math.floor(doy[r] / razones[r]), 0);
+  const pedidas = total(pido);
 
-  const cambiar =
-    (
-      poner: (f: (previo: Cantidades) => Cantidades) => void,
-      tope: Cantidades | null,
-      /** Cuántas cartas pone un toque cuando se comercia con la banca. */
-      cartasConBanca: (recurso: Recurso) => number = () => 1,
-    ) =>
-    (recurso: Recurso, delta: number): void => {
-      poner((previo) => {
-        if (conBanca) return { ...VACIO, [recurso]: delta > 0 ? cartasConBanca(recurso) : 0 };
-        const maximo = tope ? tope[recurso] : MAX_PEDIDO;
-        return { ...previo, [recurso]: Math.max(0, Math.min(maximo, previo[recurso] + delta)) };
-      });
-    };
+  /** Con jugadores: de uno en uno, sin pasar de lo que tengo (al dar) ni del tope (al pedir). */
+  const acotar = (
+    previo: Cantidades,
+    recurso: Recurso,
+    delta: number,
+    maximo: number,
+  ): Cantidades => ({
+    ...previo,
+    [recurso]: Math.max(0, Math.min(maximo, previo[recurso] + delta)),
+  });
+  const alCambiarDoy = (recurso: Recurso, delta: number): void =>
+    setDoy((previo) => {
+      if (!conBanca) return acotar(previo, recurso, delta, mano ? mano[recurso] : MAX_PEDIDO);
+      const siguiente = previo[recurso] + delta * razones[recurso];
+      return siguiente < 0 || siguiente > (mano?.[recurso] ?? 0)
+        ? previo
+        : { ...previo, [recurso]: siguiente };
+    });
+  const alCambiarPido = (recurso: Recurso, delta: number): void =>
+    setPido((previo) => {
+      if (!conBanca) return acotar(previo, recurso, delta, MAX_PEDIDO);
+      const siguiente = previo[recurso] + delta;
+      return siguiente < 0 || (delta > 0 && total(previo) >= cambios)
+        ? previo
+        : { ...previo, [recurso]: siguiente };
+    });
 
-  const unoDeCada =
-    RECURSOS.filter((r) => doy[r] > 0).length === 1 &&
-    RECURSOS.filter((r) => pido[r] > 0).length === 1;
+  // Qué cartas se pueden tocar en la banca: dar solo si queda una razón completa en la mano y no se
+  // está pidiendo ese recurso; pedir solo mientras falten cartas por elegir y no se esté dando.
+  const limiteDoyBanca = Object.fromEntries(
+    RECURSOS.map((r) => [r, (mano?.[r] ?? 0) - doy[r] >= razones[r] && pido[r] === 0 ? 1 : 0]),
+  ) as Cantidades;
+  const limitePidoBanca = Object.fromEntries(
+    RECURSOS.map((r) => [r, doy[r] === 0 && pedidas < cambios ? 1 : 0]),
+  ) as Cantidades;
+
   const mismoRecurso = RECURSOS.some((r) => doy[r] > 0 && pido[r] > 0);
-  const entregaBanca = RECURSOS.find((r) => doy[r] > 0);
-  const cobroDeBanca =
-    entregaBanca !== undefined &&
-    doy[entregaBanca] === razones[entregaBanca] &&
-    (mano?.[entregaBanca] ?? 0) >= razones[entregaBanca];
   const valido = conBanca
-    ? unoDeCada && !mismoRecurso && cobroDeBanca
+    ? cambios > 0 && pedidas === cambios && !mismoRecurso
     : total(doy) > 0 && total(pido) > 0;
+  const pista =
+    cambios === 0
+      ? 'Elige qué das: cada toque suma un cambio completo.'
+      : pedidas < cambios
+        ? `Elige ${cambios - pedidas} ${cambios - pedidas === 1 ? 'carta' : 'cartas'} más.`
+        : pedidas > cambios
+          ? `Pides ${pedidas - cambios} de más: quita ${pedidas - cambios === 1 ? 'una carta' : 'cartas'}.`
+          : `${cambios} ${cambios === 1 ? 'cambio' : 'cambios'}: listo para enviar.`;
 
   const enviar = (): void => {
     if (conBanca) {
-      const entrega = RECURSOS.find((r) => doy[r] > 0)!;
-      const recibe = RECURSOS.find((r) => pido[r] > 0)!;
-      onAccion({ tipo: 'CAMBIAR_CON_BANCA', entrega, recibe });
+      onAccion({
+        tipo: 'CAMBIAR_CON_BANCA',
+        entrega: soloConCantidad(doy),
+        recibe: soloConCantidad(pido),
+      });
     } else {
       onAccion({
         tipo: 'PROPONER_TRATO',
@@ -199,15 +228,7 @@ export function Comercio({
           {avisoDeReglas}
         </output>
       )}
-      <FilaDeCartas
-        titulo="Doy"
-        valores={doy}
-        limite={conBanca ? alcanzaParaBanca : mano}
-        {...(conBanca && { razones })}
-        alCambiar={cambiar(setDoy, mano, (r) => razones[r])}
-      />
-      <FilaDeCartas titulo="Pido" valores={pido} limite={null} alCambiar={cambiar(setPido, null)} />
-
+      {/* Con quién: todos, un jugador o la banca. Arriba, como la cabecera de las ofertas. */}
       <div className="flex flex-wrap items-center gap-2">
         {!privado && (
           <button
@@ -215,8 +236,9 @@ export function Comercio({
             aria-pressed={destino === 'TODOS'}
             disabled={!puedeTratos}
             onClick={() => elegirDestino('TODOS')}
-            className={`rounded-full px-3 py-1 text-sm font-bold disabled:opacity-40 ${destino === 'TODOS' ? 'bg-azafran' : 'bg-white'}`}
+            className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-bold disabled:opacity-40 ${destino === 'TODOS' ? 'bg-azafran' : 'bg-white'}`}
           >
+            <IconoAmigos tamano={22} />
             Todos
           </button>
         )}
@@ -240,12 +262,39 @@ export function Comercio({
           aria-pressed={conBanca}
           disabled={!puedeBanca}
           onClick={() => elegirDestino('BANCA')}
-          className={`rounded-full px-3 py-1 text-sm font-bold disabled:opacity-40 ${conBanca ? 'bg-azafran' : 'bg-white'}`}
+          className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-bold disabled:opacity-40 ${conBanca ? 'bg-azafran' : 'bg-white'}`}
         >
+          <IconoBanco tamano={22} />
           Banca
         </button>
+      </div>
 
-        <span className="grow" />
+      {/* Lo que pides (recibes, flecha verde) y lo que das (flecha roja), como en las ofertas. */}
+      <FilaDeCartas
+        titulo="Pido"
+        recibe
+        valores={pido}
+        limite={conBanca ? limitePidoBanca : null}
+        alCambiar={alCambiarPido}
+      />
+      <FilaDeCartas
+        titulo="Doy"
+        recibe={false}
+        valores={doy}
+        limite={conBanca ? limiteDoyBanca : mano}
+        {...(conBanca && { razones })}
+        alCambiar={alCambiarDoy}
+      />
+      {conBanca && (
+        <p
+          className={`text-sm font-bold ${valido ? 'text-[#1f6b3d]' : 'text-tinta-suave'}`}
+          data-pista-banca=""
+        >
+          {pista}
+        </p>
+      )}
+
+      <div className="flex items-center justify-end gap-2">
         <button
           type="button"
           aria-label="Cerrar comercio"
